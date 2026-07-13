@@ -29,7 +29,7 @@ export class Game {
     this.cushionBeforeHit = false;
     this.foul = false;
     this.foulReason = '';
-    this.friction = 2.4;
+    this.friction = 0.72;
     this.onUpdate = null;
     this.aiTimer = 0;
     this.aiShot = null;
@@ -192,7 +192,7 @@ export class Game {
       for (const ball of activeBalls) {
         ball.pos.add(Vec2.scale(ball.vel, subDt));
         applyFriction(ball.vel, this.friction, subDt);
-        if (ball.vel.length() > 0.03) anyMoving = true;
+        if (ball.vel.length() > 0.2) anyMoving = true;
 
         if (this.table.constrainBall(ball)) {
           if (!this.firstHitBall) this.cushionBeforeHit = true;
@@ -213,7 +213,7 @@ export class Game {
       }
     }
 
-    const stillMoving = anyMoving || isMoving(this.balls, 0.03);
+    const stillMoving = anyMoving || isMoving(this.balls, 0.2);
     const animating = this.hasAnimations();
 
     if (this.shotInProgress && !stillMoving && !animating) {

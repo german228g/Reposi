@@ -2,12 +2,13 @@ import { Vec2 } from './physics.js';
 import { getBallGroup } from './balls.js';
 
 export class Cue {
-  constructor() {
+  constructor(table) {
+    this.table = table;
     this.aimAngle = 0;
     this.pullDistance = 0;
-    this.maxPull = 200;
-    this.maxPower = 28;
-    this.minPower = 0.15;
+    this.maxPull = table ? table.width * 0.14 : 220;
+    this.maxPower = table ? table.width * 0.048 : 75;
+    this.minPower = 0.08;
     this.showAimLine = true;
     this.mousePos = new Vec2(0, 0);
     this.pulling = false;
@@ -48,10 +49,10 @@ export class Cue {
     const pullBack = -toFinger.dot(aimDir);
 
     let power = 0;
-    if (pullBack > 8) {
-      power = pullBack;
+    if (pullBack > 5) {
+      power = pullBack * 1.15;
     } else {
-      power = Math.max(0, (dist - 50) * 0.55);
+      power = Math.max(0, (dist - 20) * 0.95);
     }
 
     this.pullDistance = Math.max(0, Math.min(power, this.maxPull));
@@ -285,8 +286,8 @@ export function findBestShot(game) {
       const score = distScore + 1 / (pocketDist * 0.005 + 1);
 
       if (!best || score > best.score) {
-        const power = Math.min(game.table.width * 0.012, 8 + dist * 0.018);
-        best = { angle, power: Math.min(24, power), score, target };
+        const power = 12 + dist * 0.04;
+        best = { angle, power: Math.min(game.table.width * 0.045, power), score, target };
       }
     }
   }
@@ -294,7 +295,7 @@ export function findBestShot(game) {
   if (!best && game.firstShot) {
     const rackCenter = { x: game.table.bounds.rackX - 80, y: game.table.bounds.rackY };
     const toRack = Vec2.sub(rackCenter, cue.pos);
-    return { angle: Math.atan2(toRack.y, toRack.x), power: 22, score: 0.1 };
+    return { angle: Math.atan2(toRack.y, toRack.x), power: game.table.width * 0.042, score: 0.1 };
   }
 
   if (!best) {
@@ -302,7 +303,7 @@ export function findBestShot(game) {
       const toTarget = Vec2.sub(target.pos, cue.pos);
       const angle = Math.atan2(toTarget.y, toTarget.x);
       if (isPathClear(cue.pos, target.pos, game.balls, cue.radius, [0, target.id])) {
-        return { angle, power: 12, score: 0.05 };
+        return { angle, power: game.table.width * 0.028, score: 0.05 };
       }
     }
   }

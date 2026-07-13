@@ -103,7 +103,7 @@ export function reflectOffCushion(pos, vel, normal, restitution = 0.85) {
 
 export function applyFriction(vel, friction, dt) {
   const speed = vel.length();
-  if (speed < 0.01) {
+  if (speed < 0.25) {
     vel.set(0, 0);
     return;
   }
@@ -115,6 +115,11 @@ export function applyFriction(vel, friction, dt) {
   }
 }
 
-export function isMoving(balls, threshold = 0.05) {
-  return balls.some(b => b.active && b.vel.length() > threshold);
+export function isMoving(balls, threshold = 0.2) {
+  return balls.some(b => b.active && !b.pocketed && !b.pocketAnim && b.vel.length() > threshold);
+}
+
+/** Примерная дальность проката при линейном трении */
+export function rollDistance(initialSpeed, friction) {
+  return (initialSpeed * initialSpeed) / (2 * friction);
 }

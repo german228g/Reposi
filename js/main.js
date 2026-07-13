@@ -41,7 +41,7 @@ function startGame() {
 
   table = new Table(canvas);
   renderer = new Renderer(table);
-  cue = new Cue();
+  cue = new Cue(table);
   game = new Game(table);
 
   function updateHUD() {
