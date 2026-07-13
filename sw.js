@@ -1,4 +1,4 @@
-const CACHE = 'pool-v4';
+const CACHE = 'pool-v5';
 const ASSETS = [
   './',
   './play.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/table.js',
   './js/balls.js',
   './js/renderer.js',
+  './js/physicsConfig.js',
   './js/physics.js',
   './js/input.js',
   './js/pwa.js',

@@ -3,18 +3,14 @@ import { Cue } from './cue.js';
 import { Game } from './game.js';
 import { Renderer } from './renderer.js';
 import { InputController } from './input.js';
+import { PHYSICS } from './physicsConfig.js';
 import { initPWA, isStandalone } from './pwa.js';
 
 const splash = document.getElementById('splash');
 const gameApp = document.getElementById('game-app');
 const btnPlay = document.getElementById('btn-play');
-const gameUrlEl = document.getElementById('game-url');
 
 initPWA();
-
-if (gameUrlEl) {
-  gameUrlEl.textContent = window.location.href;
-}
 
 let started = false;
 let table, renderer, cue, game, input;
@@ -29,20 +25,32 @@ function startGame() {
 
   const canvas = document.getElementById('table-canvas');
   const powerFill = document.getElementById('power-fill');
+  const powerSlider = document.getElementById('power-slider');
   const turnIndicator = document.getElementById('turn-indicator');
   const groupIndicator = document.getElementById('group-indicator');
   const opponentIndicator = document.getElementById('opponent-indicator');
   const messageEl = document.getElementById('message');
+  const versionEl = document.getElementById('version-tag');
   const btnReset = document.getElementById('btn-reset');
   const btnAimLine = document.getElementById('btn-aim-line');
   const btnShoot = document.getElementById('btn-shoot');
   const playerPanel = document.getElementById('player-panel');
   const opponentPanel = document.getElementById('opponent-panel');
 
+  if (versionEl) versionEl.textContent = `v${PHYSICS.version}`;
+
   table = new Table(canvas);
   renderer = new Renderer(table);
   cue = new Cue(table);
   game = new Game(table);
+
+  function setPowerUI(pct) {
+    powerFill.style.width = `${pct}%`;
+    if (powerSlider && document.activeElement !== powerSlider) {
+      powerSlider.value = Math.round(pct);
+    }
+    btnShoot.disabled = !game.canShoot() || pct < 5;
+  }
 
   function updateHUD() {
     const human = game.players[1];
@@ -59,34 +67,34 @@ function startGame() {
     groupIndicator.textContent = `Ваши: ${human.group ? (human.group === 'solid' ? 'цельные' : 'полосатые') : '—'}`;
     opponentIndicator.textContent = `Соперник: ${ai.group ? (ai.group === 'solid' ? 'цельные' : 'полосатые') : '—'}`;
     messageEl.textContent = game.message;
-    powerFill.style.width = `${cue.getPowerPercent()}%`;
+    setPowerUI(cue.getPowerPercent());
 
-    const canShoot = game.canShoot();
     playerPanel.classList.toggle('active', game.isHumanTurn() && game.state !== 'game_over');
     opponentPanel.classList.toggle('active', !game.isHumanTurn() && game.state !== 'game_over');
-    btnShoot.disabled = !canShoot || cue.getPowerPercent() < 8;
   }
 
   game.onUpdate = updateHUD;
 
-  input = new InputController(canvas, table, cue, game, (pct) => {
-    powerFill.style.width = `${pct}%`;
-    btnShoot.disabled = !game.canShoot() || pct < 8;
+  input = new InputController(canvas, table, cue, game, setPowerUI);
+
+  powerSlider?.addEventListener('input', () => {
+    if (!game.canShoot()) return;
+    cue.beginAim();
+    cue.visible = true;
+    cue.powerLevel = Number(powerSlider.value) / 100;
+    setPowerUI(cue.getPowerPercent());
   });
 
   btnShoot.addEventListener('click', () => {
     if (!game.canShoot()) return;
-    const shot = cue.release();
-    if (shot) {
-      game.shoot(shot.vx, shot.vy);
-      powerFill.style.width = '0%';
-    }
+    if (cue.powerLevel < 0.05) cue.powerLevel = 0.85;
+    input.fire();
   });
 
   btnReset.addEventListener('click', () => {
     game.reset();
-    cue.cancelPull();
-    powerFill.style.width = '0%';
+    cue.cancelAim();
+    setPowerUI(0);
   });
 
   btnAimLine.addEventListener('click', () => {
@@ -126,8 +134,8 @@ function startGame() {
       cue.draw(ctx, game.getCueBall(), game.balls, table.bounds);
     } else if (game.state === 'ai_thinking' && game.aiShot) {
       cue.aimAngle = game.aiShot.angle;
+      cue.powerLevel = game.aiShot.power / PHYSICS.maxSpeed(table);
       cue.visible = true;
-      cue.pullDistance = (game.aiShot.power / cue.maxPower) * cue.maxPull * 0.7;
       cue.draw(ctx, game.getCueBall(), game.balls, table.bounds);
     }
   }
@@ -144,12 +152,9 @@ function startGame() {
   game.reset();
   cue.visible = true;
   const cueBall = game.getCueBall();
-  if (cueBall) cue.setAimFromPoint({ x: cueBall.pos.x + 200, y: cueBall.pos.y }, cueBall.pos);
+  if (cueBall) cue.setAimFromPoint({ x: cueBall.pos.x + 300, y: cueBall.pos.y }, cueBall.pos);
   requestAnimationFrame(loop);
 }
 
 btnPlay?.addEventListener('click', startGame);
-
-if (isStandalone) {
-  startGame();
-}
+if (isStandalone) startGame();

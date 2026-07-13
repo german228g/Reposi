@@ -56,13 +56,15 @@
     <div class="status-bar">
       <span id="turn-indicator">Ваш ход</span>
       <span id="message">Коснитесь стола → ведите палец → отпустите</span>
+      <span id="version-tag" class="version-tag">v4.0</span>
     </div>
 
     <main class="game-area">
       <canvas id="table-canvas"></canvas>
-      <p class="control-hint">👆 Прицел — куда ведёте палец. Сила — как далеко от битка.</p>
+      <p class="control-hint">👆 Прицел — направление пальца. Сила — расстояние от битка.</p>
       <div class="power-meter">
         <div class="power-meter-label">Сила</div>
+        <input type="range" id="power-slider" class="power-slider" min="0" max="100" value="0">
         <div class="power-meter-bar">
           <div class="power-meter-fill" id="power-fill"></div>
         </div>

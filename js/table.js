@@ -63,29 +63,29 @@ export class Table {
     ];
   }
 
-  constrainBall(ball) {
+  constrainBall(ball, restitution = 0.88) {
     const b = this.bounds;
     const r = ball.radius;
     let hit = false;
 
     if (ball.pos.x - r < b.left) {
       ball.pos.x = b.left + r;
-      reflectOffCushion(ball.pos, ball.vel, new Vec2(1, 0), 0.88);
+      reflectOffCushion(ball.pos, ball.vel, new Vec2(1, 0), restitution);
       hit = true;
     }
     if (ball.pos.x + r > b.right) {
       ball.pos.x = b.right - r;
-      reflectOffCushion(ball.pos, ball.vel, new Vec2(-1, 0), 0.88);
+      reflectOffCushion(ball.pos, ball.vel, new Vec2(-1, 0), restitution);
       hit = true;
     }
     if (ball.pos.y - r < b.top) {
       ball.pos.y = b.top + r;
-      reflectOffCushion(ball.pos, ball.vel, new Vec2(0, 1), 0.88);
+      reflectOffCushion(ball.pos, ball.vel, new Vec2(0, 1), restitution);
       hit = true;
     }
     if (ball.pos.y + r > b.bottom) {
       ball.pos.y = b.bottom - r;
-      reflectOffCushion(ball.pos, ball.vel, new Vec2(0, -1), 0.88);
+      reflectOffCushion(ball.pos, ball.vel, new Vec2(0, -1), restitution);
       hit = true;
     }
 

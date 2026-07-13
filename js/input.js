@@ -9,22 +9,19 @@ export class InputController {
     this.onPowerChange = onPowerChange;
     this.active = false;
     this.pointerId = null;
-    this.lastPos = new Vec2(0, 0);
 
     canvas.style.touchAction = 'none';
-    canvas.addEventListener('pointerdown', (e) => this.onDown(e));
-    canvas.addEventListener('pointermove', (e) => this.onMove(e));
-    canvas.addEventListener('pointerup', (e) => this.onUp(e));
-    canvas.addEventListener('pointercancel', (e) => this.onUp(e));
+    canvas.addEventListener('pointerdown', (e) => this.onDown(e), { passive: false });
+    canvas.addEventListener('pointermove', (e) => this.onMove(e), { passive: false });
+    canvas.addEventListener('pointerup', (e) => this.onUp(e), { passive: false });
+    canvas.addEventListener('pointercancel', (e) => this.onUp(e), { passive: false });
   }
 
   getPos(e) {
     const t = e.touches?.[0] || e.changedTouches?.[0];
     const x = t ? t.clientX : e.clientX;
     const y = t ? t.clientY : e.clientY;
-    const pos = this.table.screenToWorld(x, y);
-    this.lastPos.set(pos.x, pos.y);
-    return pos;
+    return this.table.screenToWorld(x, y);
   }
 
   onDown(e) {
@@ -34,14 +31,14 @@ export class InputController {
       this.game.placeCueBall(pos.x, pos.y);
       return;
     }
-
     if (!this.game.canShoot()) return;
 
     e.preventDefault();
     this.active = true;
     this.pointerId = e.pointerId;
-    this.canvas.setPointerCapture(e.pointerId);
-    this.cue.startShot();
+    try { this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+
+    this.cue.beginAim();
     this.updateAimPower(this.getPos(e));
   }
 
@@ -55,26 +52,27 @@ export class InputController {
     if (!this.active || e.pointerId !== this.pointerId) return;
     e.preventDefault();
     this.active = false;
+    try { this.canvas.releasePointerCapture(e.pointerId); } catch (_) {}
 
-    try {
-      this.canvas.releasePointerCapture(e.pointerId);
-    } catch (_) { /* ignore */ }
-
-    const shot = this.cue.release();
-    if (shot) {
-      this.game.shoot(shot.vx, shot.vy);
-    } else {
-      this.cue.cancelPull();
-    }
-    this.onPowerChange?.(0);
+    this.fire();
   }
 
   updateAimPower(pos) {
     const cueBall = this.game.getCueBall();
     if (!cueBall) return;
-
     this.cue.setAimFromPoint(pos, cueBall.pos);
-    this.cue.updatePowerFromFinger(pos, cueBall.pos);
+    this.cue.setPowerFromFinger(pos, cueBall.pos);
+    this.onPowerChange?.(this.cue.getPowerPercent());
+  }
+
+  fire() {
+    const shot = this.cue.fireShot();
+    if (shot) {
+      this.game.shoot(shot.vx, shot.vy);
+      if (navigator.vibrate) navigator.vibrate(12);
+    } else {
+      this.cue.cancelAim();
+    }
     this.onPowerChange?.(this.cue.getPowerPercent());
   }
 }

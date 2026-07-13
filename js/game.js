@@ -1,4 +1,5 @@
-import { Vec2, resolveBallCollision, applyFriction, isMoving } from './physics.js';
+import { Vec2, resolveBallCollision, isMoving } from './physics.js';
+import { PHYSICS, applyFriction } from './physicsConfig.js';
 import { createRack, getBallGroup } from './balls.js';
 import { findBestShot } from './cue.js';
 
@@ -43,7 +44,7 @@ export class Game {
     this.currentPlayer = 1;
     this.players[1].group = null;
     this.players[2].group = null;
-    this.message = 'Коснитесь стола, ведите палец, отпустите — удар';
+    this.message = 'Ведите палец от битка — чем дальше, тем сильнее удар';
     this.winner = null;
     this.firstShot = true;
     this.tableOpen = true;
@@ -184,17 +185,17 @@ export class Game {
     }
 
     const activeBalls = this.getActiveBalls();
-    const steps = 4;
+    const steps = PHYSICS.substeps;
     const subDt = dt / steps;
     let anyMoving = false;
 
     for (let step = 0; step < steps; step++) {
       for (const ball of activeBalls) {
         ball.pos.add(Vec2.scale(ball.vel, subDt));
-        applyFriction(ball.vel, this.friction, subDt);
-        if (ball.vel.length() > 0.2) anyMoving = true;
+        applyFriction(ball.vel, subDt);
+        if (ball.vel.length() > PHYSICS.stopSpeed) anyMoving = true;
 
-        if (this.table.constrainBall(ball)) {
+        if (this.table.constrainBall(ball, PHYSICS.cushionRestitution)) {
           if (!this.firstHitBall) this.cushionBeforeHit = true;
         }
 
@@ -206,14 +207,14 @@ export class Game {
 
       for (let i = 0; i < activeBalls.length; i++) {
         for (let j = i + 1; j < activeBalls.length; j++) {
-          if (resolveBallCollision(activeBalls[i], activeBalls[j], 0.97)) {
+          if (resolveBallCollision(activeBalls[i], activeBalls[j], PHYSICS.restitution)) {
             this.registerHit(activeBalls[i], activeBalls[j]);
           }
         }
       }
     }
 
-    const stillMoving = anyMoving || isMoving(this.balls, 0.2);
+    const stillMoving = anyMoving || isMoving(this.balls, PHYSICS.stopSpeed);
     const animating = this.hasAnimations();
 
     if (this.shotInProgress && !stillMoving && !animating) {
@@ -246,10 +247,11 @@ export class Game {
     if (shot) {
       const err = (Math.random() - 0.5) * 0.04;
       const pErr = (Math.random() - 0.5) * 1.5;
-      this.aiShot = { angle: shot.angle + err, power: Math.max(4, shot.power + pErr) };
+      this.aiShot = { angle: shot.angle + err, power: Math.max(PHYSICS.minSpeed(this.table), shot.power + pErr) };
     } else {
       const cue = this.getCueBall();
-      this.aiShot = { angle: Math.random() * Math.PI * 2, power: 8 };
+      const maxSpd = PHYSICS.maxSpeed(this.table);
+      this.aiShot = { angle: 0, power: maxSpd * 0.5 };
       if (cue) {
         const targets = this.getLegalTargets();
         if (targets.length) {

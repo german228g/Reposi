@@ -115,7 +115,7 @@ export function applyFriction(vel, friction, dt) {
   }
 }
 
-export function isMoving(balls, threshold = 0.2) {
+export function isMoving(balls, threshold = 4) {
   return balls.some(b => b.active && !b.pocketed && !b.pocketAnim && b.vel.length() > threshold);
 }
 
