@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Бильярд — 8 Ball Pool</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>8 Ball Pool</h1>
+      <div class="hud">
+        <div class="hud-item" id="turn-indicator">Ваш удар</div>
+        <div class="hud-item" id="group-indicator">Группа: —</div>
+        <div class="hud-item" id="message">Потяните кий назад и отпустите</div>
+      </div>
+    </header>
+
+    <main class="game-area">
+      <canvas id="table-canvas"></canvas>
+      <div class="power-meter">
+        <div class="power-meter-label">Сила</div>
+        <div class="power-meter-bar">
+          <div class="power-meter-fill" id="power-fill"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <button id="btn-reset" class="btn">Новая игра</button>
+      <button id="btn-aim-line" class="btn btn-secondary">Линия прицела</button>
+    </footer>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
