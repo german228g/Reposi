@@ -2,6 +2,7 @@ import { Table } from './table.js';
 import { Cue } from './cue.js';
 import { Game } from './game.js';
 import { Renderer } from './renderer.js';
+import { InputController } from './input.js';
 import { initPWA, isStandalone } from './pwa.js';
 
 const splash = document.getElementById('splash');
@@ -16,9 +17,8 @@ if (gameUrlEl) {
 }
 
 let started = false;
-let table, renderer, cue, game;
+let table, renderer, cue, game, input;
 let lastTime = 0;
-let isDragging = false;
 
 function startGame() {
   if (started) return;
@@ -35,6 +35,7 @@ function startGame() {
   const messageEl = document.getElementById('message');
   const btnReset = document.getElementById('btn-reset');
   const btnAimLine = document.getElementById('btn-aim-line');
+  const btnShoot = document.getElementById('btn-shoot');
   const playerPanel = document.getElementById('player-panel');
   const opponentPanel = document.getElementById('opponent-panel');
 
@@ -60,81 +61,27 @@ function startGame() {
     messageEl.textContent = game.message;
     powerFill.style.width = `${cue.getPowerPercent()}%`;
 
+    const canShoot = game.canShoot();
     playerPanel.classList.toggle('active', game.isHumanTurn() && game.state !== 'game_over');
     opponentPanel.classList.toggle('active', !game.isHumanTurn() && game.state !== 'game_over');
+    btnShoot.disabled = !canShoot || cue.getPowerPercent() < 8;
   }
 
   game.onUpdate = updateHUD;
 
-  function getEventPos(e) {
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const y = e.touches ? e.touches[0].clientY : e.clientY;
-    return table.screenToWorld(x, y);
-  }
+  input = new InputController(canvas, table, cue, game, (pct) => {
+    powerFill.style.width = `${pct}%`;
+    btnShoot.disabled = !game.canShoot() || pct < 8;
+  });
 
-  function onPointerDown(e) {
-    e.preventDefault();
-    const pos = getEventPos(e);
-
-    if (game.canPlaceCueBall()) {
-      game.placeCueBall(pos.x, pos.y);
-      return;
-    }
-
+  btnShoot.addEventListener('click', () => {
     if (!game.canShoot()) return;
-
-    const cueBall = game.getCueBall();
-    cue.setAimFromPoint(pos, cueBall.pos);
-    isDragging = true;
-  }
-
-  function onPointerMove(e) {
-    const pos = getEventPos(e);
-    const cueBall = game.getCueBall();
-
-    if (game.canShoot() && cueBall) {
-      cue.setAimFromPoint(pos, cueBall.pos);
-    }
-
-    if (!isDragging) return;
-    e.preventDefault();
-    if (!game.canShoot()) return;
-
-    if (!cue.pulling) {
-      const distToCue = Math.hypot(pos.x - cueBall.pos.x, pos.y - cueBall.pos.y);
-      if (distToCue < 120) cue.startPull();
-    } else {
-      cue.updatePull(pos, cueBall.pos);
-      powerFill.style.width = `${cue.getPowerPercent()}%`;
-    }
-  }
-
-  function onPointerUp(e) {
-    if (!isDragging) return;
-    e.preventDefault();
-    isDragging = false;
-
-    if (cue.pulling) {
-      const shot = cue.release();
-      if (shot) game.shoot(shot.vx, shot.vy);
-      else cue.cancelPull();
+    const shot = cue.release();
+    if (shot) {
+      game.shoot(shot.vx, shot.vy);
       powerFill.style.width = '0%';
     }
-  }
-
-  function onPointerLeave() {
-    isDragging = false;
-    cue.cancelPull();
-    powerFill.style.width = '0%';
-  }
-
-  canvas.addEventListener('mousedown', onPointerDown);
-  canvas.addEventListener('mousemove', onPointerMove);
-  canvas.addEventListener('mouseup', onPointerUp);
-  canvas.addEventListener('mouseleave', onPointerLeave);
-  canvas.addEventListener('touchstart', onPointerDown, { passive: false });
-  canvas.addEventListener('touchmove', onPointerMove, { passive: false });
-  canvas.addEventListener('touchend', onPointerUp);
+  });
 
   btnReset.addEventListener('click', () => {
     game.reset();
@@ -144,7 +91,7 @@ function startGame() {
 
   btnAimLine.addEventListener('click', () => {
     cue.showAimLine = !cue.showAimLine;
-    btnAimLine.textContent = cue.showAimLine ? 'Линия прицела: вкл' : 'Линия прицела: выкл';
+    btnAimLine.textContent = cue.showAimLine ? 'Прицел: вкл' : 'Прицел: выкл';
   });
 
   function render() {

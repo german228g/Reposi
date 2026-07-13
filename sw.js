@@ -1,7 +1,7 @@
-const CACHE = 'pool-v2';
+const CACHE = 'pool-v3';
 const ASSETS = [
   './',
-  './index.html',
+  './play.html',
   './css/style.css',
   './css/launch.css',
   './js/main.js',
@@ -11,6 +11,7 @@ const ASSETS = [
   './js/balls.js',
   './js/renderer.js',
   './js/physics.js',
+  './js/input.js',
   './js/pwa.js',
   './manifest.webmanifest',
   './icons/icon-180.png',

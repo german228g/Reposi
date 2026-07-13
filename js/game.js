@@ -29,7 +29,7 @@ export class Game {
     this.cushionBeforeHit = false;
     this.foul = false;
     this.foulReason = '';
-    this.friction = 3.2;
+    this.friction = 2.4;
     this.onUpdate = null;
     this.aiTimer = 0;
     this.aiShot = null;
@@ -43,7 +43,7 @@ export class Game {
     this.currentPlayer = 1;
     this.players[1].group = null;
     this.players[2].group = null;
-    this.message = 'Разбейте пирамиду! Ударьте по шарам.';
+    this.message = 'Коснитесь стола, ведите палец, отпустите — удар';
     this.winner = null;
     this.firstShot = true;
     this.tableOpen = true;
@@ -184,32 +184,36 @@ export class Game {
     }
 
     const activeBalls = this.getActiveBalls();
+    const steps = 4;
+    const subDt = dt / steps;
     let anyMoving = false;
 
-    for (const ball of activeBalls) {
-      ball.pos.add(Vec2.scale(ball.vel, dt));
-      applyFriction(ball.vel, this.friction, dt);
-      if (ball.vel.length() > 0.04) anyMoving = true;
+    for (let step = 0; step < steps; step++) {
+      for (const ball of activeBalls) {
+        ball.pos.add(Vec2.scale(ball.vel, subDt));
+        applyFriction(ball.vel, this.friction, subDt);
+        if (ball.vel.length() > 0.03) anyMoving = true;
 
-      if (this.table.constrainBall(ball)) {
-        if (!this.firstHitBall) this.cushionBeforeHit = true;
+        if (this.table.constrainBall(ball)) {
+          if (!this.firstHitBall) this.cushionBeforeHit = true;
+        }
+
+        const pocket = this.table.checkPocket(ball);
+        if (pocket) {
+          this.onBallPocketed(ball, pocket);
+        }
       }
 
-      const pocket = this.table.checkPocket(ball);
-      if (pocket) {
-        this.onBallPocketed(ball, pocket);
-      }
-    }
-
-    for (let i = 0; i < activeBalls.length; i++) {
-      for (let j = i + 1; j < activeBalls.length; j++) {
-        if (resolveBallCollision(activeBalls[i], activeBalls[j], 0.96)) {
-          this.registerHit(activeBalls[i], activeBalls[j]);
+      for (let i = 0; i < activeBalls.length; i++) {
+        for (let j = i + 1; j < activeBalls.length; j++) {
+          if (resolveBallCollision(activeBalls[i], activeBalls[j], 0.97)) {
+            this.registerHit(activeBalls[i], activeBalls[j]);
+          }
         }
       }
     }
 
-    const stillMoving = anyMoving || isMoving(this.balls, 0.04);
+    const stillMoving = anyMoving || isMoving(this.balls, 0.03);
     const animating = this.hasAnimations();
 
     if (this.shotInProgress && !stillMoving && !animating) {

@@ -5,13 +5,20 @@ export class Cue {
   constructor() {
     this.aimAngle = 0;
     this.pullDistance = 0;
-    this.maxPull = 160;
-    this.maxPower = 22;
+    this.maxPull = 200;
+    this.maxPower = 28;
+    this.minPower = 0.15;
     this.showAimLine = true;
     this.mousePos = new Vec2(0, 0);
     this.pulling = false;
     this.visible = false;
     this.strikeAnim = 0;
+  }
+
+  startShot() {
+    this.pulling = true;
+    this.pullDistance = 0;
+    this.visible = true;
   }
 
   setAimFromPoint(point, cueBallPos) {
@@ -21,34 +28,55 @@ export class Cue {
     this.mousePos.set(px, py);
     const dx = px - cueBallPos.x;
     const dy = py - cueBallPos.y;
-    if (Math.hypot(dx, dy) > 2) {
+    if (Math.hypot(dx, dy) > 8) {
       this.aimAngle = Math.atan2(dy, dx);
       this.visible = true;
     }
   }
 
-  startPull() {
-    this.pulling = true;
-    this.pullDistance = 0;
-  }
-
-  updatePull(mousePos, cueBallPos) {
+  updatePowerFromFinger(fingerPos, cueBallPos) {
     if (!this.pulling || !cueBallPos) return;
+
+    const toFinger = Vec2.sub(fingerPos, cueBallPos);
+    const dist = toFinger.length();
+    if (dist < 15) {
+      this.pullDistance = 0;
+      return;
+    }
+
     const aimDir = new Vec2(Math.cos(this.aimAngle), Math.sin(this.aimAngle));
-    const toMouse = Vec2.sub(mousePos, cueBallPos);
-    const pull = -toMouse.dot(aimDir);
-    this.pullDistance = Math.max(0, Math.min(pull, this.maxPull));
+    const pullBack = -toFinger.dot(aimDir);
+
+    let power = 0;
+    if (pullBack > 8) {
+      power = pullBack;
+    } else {
+      power = Math.max(0, (dist - 50) * 0.55);
+    }
+
+    this.pullDistance = Math.max(0, Math.min(power, this.maxPull));
   }
 
   release() {
     if (!this.pulling) return null;
+
     const power = (this.pullDistance / this.maxPull) * this.maxPower;
     const angle = this.aimAngle;
+
     this.pulling = false;
-    this.pullDistance = 0;
     this.strikeAnim = 1;
-    if (power < 0.4) return null;
-    return { vx: Math.cos(angle) * power, vy: Math.sin(angle) * power, power };
+
+    if (power < this.minPower) {
+      this.pullDistance = 0;
+      return null;
+    }
+
+    this.pullDistance = 0;
+    return {
+      vx: Math.cos(angle) * power,
+      vy: Math.sin(angle) * power,
+      power,
+    };
   }
 
   cancelPull() {
@@ -72,13 +100,24 @@ export class Cue {
     const { x, y } = cueBall.pos;
     const angle = this.aimAngle;
     const pull = this.pullDistance + this.strikeAnim * 30;
+    const r = cueBall.radius;
 
     if (this.showAimLine) {
       this.drawAimGuide(ctx, cueBall, balls, tableBounds, angle);
     }
 
+    if (this.pulling && this.pullDistance > 2) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, r + 8 + this.pullDistance * 0.15, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(240, 192, 64, ${0.25 + this.getPowerPercent() * 0.005})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     const cueLength = 420;
-    const tipOffset = cueBall.radius + 6 + pull;
+    const tipOffset = r + 6 + pull;
     const buttX = x - Math.cos(angle) * (tipOffset + cueLength);
     const buttY = y - Math.sin(angle) * (tipOffset + cueLength);
     const tipX = x - Math.cos(angle) * tipOffset;
@@ -157,8 +196,8 @@ export class Cue {
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(endX, endY);
-      ctx.strokeStyle = bounce === 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = bounce === 0 ? 2 : 1.2;
+      ctx.strokeStyle = bounce === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = bounce === 0 ? 2.5 : 1.2;
       ctx.setLineDash(bounce === 0 ? [] : [5, 5]);
       ctx.stroke();
 
@@ -168,7 +207,7 @@ export class Cue {
         ctx.setLineDash([]);
         ctx.beginPath();
         ctx.arc(gx, gy, cueBall.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
@@ -176,7 +215,7 @@ export class Cue {
         ctx.beginPath();
         ctx.moveTo(hitBall.pos.x, hitBall.pos.y);
         ctx.lineTo(hitBall.pos.x + targetDir.x * 80, hitBall.pos.y + targetDir.y * 80);
-        ctx.strokeStyle = 'rgba(255,220,80,0.5)';
+        ctx.strokeStyle = 'rgba(255,220,80,0.55)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
         break;
@@ -247,7 +286,7 @@ export function findBestShot(game) {
 
       if (!best || score > best.score) {
         const power = Math.min(game.table.width * 0.012, 8 + dist * 0.018);
-        best = { angle, power: Math.min(20, power), score, target };
+        best = { angle, power: Math.min(24, power), score, target };
       }
     }
   }
@@ -255,7 +294,7 @@ export function findBestShot(game) {
   if (!best && game.firstShot) {
     const rackCenter = { x: game.table.bounds.rackX - 80, y: game.table.bounds.rackY };
     const toRack = Vec2.sub(rackCenter, cue.pos);
-    return { angle: Math.atan2(toRack.y, toRack.x), power: 18, score: 0.1 };
+    return { angle: Math.atan2(toRack.y, toRack.x), power: 22, score: 0.1 };
   }
 
   if (!best) {
@@ -263,7 +302,7 @@ export function findBestShot(game) {
       const toTarget = Vec2.sub(target.pos, cue.pos);
       const angle = Math.atan2(toTarget.y, toTarget.x);
       if (isPathClear(cue.pos, target.pos, game.balls, cue.radius, [0, target.id])) {
-        return { angle, power: 10, score: 0.05 };
+        return { angle, power: 12, score: 0.05 };
       }
     }
   }

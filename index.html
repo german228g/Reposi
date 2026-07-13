@@ -55,22 +55,24 @@
 
     <div class="status-bar">
       <span id="turn-indicator">Ваш ход</span>
-      <span id="message">Потяните кий назад и отпустите</span>
+      <span id="message">Коснитесь стола → ведите палец → отпустите</span>
     </div>
 
     <main class="game-area">
       <canvas id="table-canvas"></canvas>
+      <p class="control-hint">👆 Прицел — куда ведёте палец. Сила — как далеко от битка.</p>
       <div class="power-meter">
         <div class="power-meter-label">Сила</div>
         <div class="power-meter-bar">
           <div class="power-meter-fill" id="power-fill"></div>
         </div>
       </div>
+      <button id="btn-shoot" class="btn-shoot" type="button" disabled>🎱 УДАР!</button>
     </main>
 
     <footer class="footer">
       <button id="btn-reset" class="btn">Новая игра</button>
-      <button id="btn-aim-line" class="btn btn-secondary">Линия прицела: вкл</button>
+      <button id="btn-aim-line" class="btn btn-secondary">Прицел: вкл</button>
     </footer>
   </div>
 
