@@ -1,29 +1,47 @@
 import { Table } from './table.js';
 import { Cue } from './cue.js';
 import { Game } from './game.js';
+import { Renderer } from './renderer.js';
 
 const canvas = document.getElementById('table-canvas');
 const powerFill = document.getElementById('power-fill');
 const turnIndicator = document.getElementById('turn-indicator');
 const groupIndicator = document.getElementById('group-indicator');
+const opponentIndicator = document.getElementById('opponent-indicator');
 const messageEl = document.getElementById('message');
 const btnReset = document.getElementById('btn-reset');
 const btnAimLine = document.getElementById('btn-aim-line');
+const playerPanel = document.getElementById('player-panel');
+const opponentPanel = document.getElementById('opponent-panel');
 
 const table = new Table(canvas);
+const renderer = new Renderer(table);
 const cue = new Cue();
 const game = new Game(table);
 
 let lastTime = 0;
 let isDragging = false;
+let pointerOnCanvas = false;
 
 function updateHUD() {
-  turnIndicator.textContent = game.state === 'game_over'
-    ? (game.winner === 1 ? 'Победа!' : 'Поражение')
-    : `Игрок ${game.currentPlayer}`;
-  groupIndicator.textContent = `Группа: ${game.getGroupLabel()}`;
+  const human = game.players[1];
+  const ai = game.players[2];
+
+  if (game.state === 'game_over') {
+    turnIndicator.textContent = game.winner === 1 ? 'Победа!' : 'Поражение';
+  } else if (game.isHumanTurn()) {
+    turnIndicator.textContent = 'Ваш ход';
+  } else {
+    turnIndicator.textContent = 'Ход соперника';
+  }
+
+  groupIndicator.textContent = `Ваши: ${human.group ? (human.group === 'solid' ? 'цельные' : 'полосатые') : '—'}`;
+  opponentIndicator.textContent = `Соперник: ${ai.group ? (ai.group === 'solid' ? 'цельные' : 'полосатые') : '—'}`;
   messageEl.textContent = game.message;
   powerFill.style.width = `${cue.getPowerPercent()}%`;
+
+  playerPanel.classList.toggle('active', game.isHumanTurn() && game.state !== 'game_over');
+  opponentPanel.classList.toggle('active', !game.isHumanTurn() && game.state !== 'game_over');
 }
 
 game.onUpdate = updateHUD;
@@ -36,6 +54,7 @@ function getEventPos(e) {
 
 function onPointerDown(e) {
   e.preventDefault();
+  pointerOnCanvas = true;
   const pos = getEventPos(e);
 
   if (game.canPlaceCueBall()) {
@@ -46,22 +65,26 @@ function onPointerDown(e) {
   if (!game.canShoot()) return;
 
   const cueBall = game.getCueBall();
-  cue.startAim(pos, cueBall.pos);
+  cue.setAimFromPoint(pos, cueBall.pos);
   isDragging = true;
 }
 
 function onPointerMove(e) {
-  if (!isDragging) return;
-  e.preventDefault();
   const pos = getEventPos(e);
   const cueBall = game.getCueBall();
 
+  if (game.canShoot() && cueBall) {
+    cue.setAimFromPoint(pos, cueBall.pos);
+  }
+
+  if (!isDragging) return;
+  e.preventDefault();
+
+  if (!game.canShoot()) return;
+
   if (!cue.pulling) {
-    cue.updateAim(pos, cueBall.pos);
     const distToCue = Math.hypot(pos.x - cueBall.pos.x, pos.y - cueBall.pos.y);
-    if (distToCue < 80) {
-      cue.startPull();
-    }
+    if (distToCue < 120) cue.startPull();
   } else {
     cue.updatePull(pos, cueBall.pos);
     powerFill.style.width = `${cue.getPowerPercent()}%`;
@@ -75,21 +98,23 @@ function onPointerUp(e) {
 
   if (cue.pulling) {
     const shot = cue.release();
-    if (shot) {
-      game.shoot(shot.vx, shot.vy);
-    } else {
-      cue.cancel();
-    }
+    if (shot) game.shoot(shot.vx, shot.vy);
+    else cue.cancelPull();
     powerFill.style.width = '0%';
-  } else {
-    cue.cancel();
   }
+}
+
+function onPointerLeave() {
+  pointerOnCanvas = false;
+  isDragging = false;
+  cue.cancelPull();
+  powerFill.style.width = '0%';
 }
 
 canvas.addEventListener('mousedown', onPointerDown);
 canvas.addEventListener('mousemove', onPointerMove);
 canvas.addEventListener('mouseup', onPointerUp);
-canvas.addEventListener('mouseleave', onPointerUp);
+canvas.addEventListener('mouseleave', onPointerLeave);
 
 canvas.addEventListener('touchstart', onPointerDown, { passive: false });
 canvas.addEventListener('touchmove', onPointerMove, { passive: false });
@@ -97,39 +122,52 @@ canvas.addEventListener('touchend', onPointerUp);
 
 btnReset.addEventListener('click', () => {
   game.reset();
-  cue.cancel();
+  cue.cancelPull();
+  cue.visible = false;
   powerFill.style.width = '0%';
 });
 
 btnAimLine.addEventListener('click', () => {
   cue.showAimLine = !cue.showAimLine;
-  btnAimLine.textContent = cue.showAimLine ? 'Линия прицела' : 'Линия: выкл';
+  btnAimLine.textContent = cue.showAimLine ? 'Линия прицела: вкл' : 'Линия прицела: выкл';
 });
 
 function render() {
-  table.draw();
+  const ctx = table.ctx;
+  renderer.drawTable(ctx);
 
-  for (const ball of game.balls) {
-    ball.draw(table.ctx);
+  const balls = game.balls.filter(b => b.active && !b.pocketed);
+  balls.sort((a, b) => a.pos.y - b.pos.y);
+
+  for (const ball of balls) {
+    if (!ball.pocketAnim) renderer.drawBallShadow(ctx, ball);
+  }
+
+  for (const ball of balls) {
+    renderer.drawBall(ctx, ball, ball.getPocketT());
   }
 
   if (game.canPlaceCueBall()) {
-    const ctx = table.ctx;
     const b = table.bounds;
     ctx.save();
-    ctx.strokeStyle = 'rgba(240, 192, 64, 0.5)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 8]);
+    ctx.strokeStyle = 'rgba(240, 192, 64, 0.6)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([12, 8]);
     ctx.strokeRect(b.left, b.top, b.right - b.left, b.bottom - b.top);
-    ctx.fillStyle = 'rgba(240, 192, 64, 0.85)';
-    ctx.font = '14px sans-serif';
+    ctx.fillStyle = 'rgba(240, 192, 64, 0.9)';
+    ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Кликните, чтобы поставить биток', table.width / 2, b.top + 30);
+    ctx.fillText('Нажмите, чтобы поставить биток', table.width / 2, b.top + 40);
     ctx.restore();
   }
 
   if (game.canShoot()) {
-    cue.draw(table.ctx, game.getCueBall(), game.balls);
+    cue.draw(ctx, game.getCueBall(), game.balls, table.bounds);
+  } else if (game.state === 'ai_thinking' && game.aiShot) {
+    cue.aimAngle = game.aiShot.angle;
+    cue.visible = true;
+    cue.pullDistance = (game.aiShot.power / cue.maxPower) * cue.maxPull * 0.7;
+    cue.draw(ctx, game.getCueBall(), game.balls, table.bounds);
   }
 }
 
@@ -138,9 +176,13 @@ function loop(timestamp) {
   lastTime = timestamp;
 
   game.update(dt);
+  cue.update(dt);
   render();
   requestAnimationFrame(loop);
 }
 
 game.reset();
+cue.visible = true;
+const cueBall = game.getCueBall();
+if (cueBall) cue.setAimFromPoint({ x: cueBall.pos.x + 200, y: cueBall.pos.y }, cueBall.pos);
 requestAnimationFrame(loop);
