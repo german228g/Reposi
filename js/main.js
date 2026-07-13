@@ -30,9 +30,10 @@ function startGame() {
   const groupIndicator = document.getElementById('group-indicator');
   const opponentIndicator = document.getElementById('opponent-indicator');
   const messageEl = document.getElementById('message');
-  const versionEl = document.getElementById('version-tag');
+  const speedEl = document.getElementById('speed-debug');
   const btnReset = document.getElementById('btn-reset');
   const btnAimLine = document.getElementById('btn-aim-line');
+  const versionEl = document.getElementById('version-tag');
   const btnShoot = document.getElementById('btn-shoot');
   const playerPanel = document.getElementById('player-panel');
   const opponentPanel = document.getElementById('opponent-panel');
@@ -69,6 +70,18 @@ function startGame() {
     messageEl.textContent = game.message;
     setPowerUI(cue.getPowerPercent());
 
+    if (speedEl) {
+      const cueBall = game.getCueBall();
+      const spd = cueBall?.vel.length() || 0;
+      if (spd > 15) {
+        speedEl.textContent = `⚡ ${Math.round(spd)} px/s`;
+      } else if (game.lastShotSpeed > 0 && game.state === 'shooting') {
+        speedEl.textContent = `Удар: ${Math.round(game.lastShotSpeed)} px/s`;
+      } else {
+        speedEl.textContent = '';
+      }
+    }
+
     playerPanel.classList.toggle('active', game.isHumanTurn() && game.state !== 'game_over');
     opponentPanel.classList.toggle('active', !game.isHumanTurn() && game.state !== 'game_over');
   }
@@ -87,8 +100,9 @@ function startGame() {
 
   btnShoot.addEventListener('click', () => {
     if (!game.canShoot()) return;
-    if (cue.powerLevel < 0.05) cue.powerLevel = 0.85;
-    input.fire();
+    cue.powerLevel = 1;
+    setPowerUI(100);
+    input.fire(true);
   });
 
   btnReset.addEventListener('click', () => {

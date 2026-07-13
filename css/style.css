@@ -137,6 +137,13 @@ body {
   opacity: 0.4;
 }
 
+.speed-debug {
+  font-size: 0.75rem;
+  color: #f0c040;
+  font-weight: 700;
+  min-height: 1em;
+}
+
 .game-area {
   flex: 1;
   display: flex;

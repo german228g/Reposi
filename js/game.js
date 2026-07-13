@@ -36,6 +36,7 @@ export class Game {
     this.aiShot = null;
     this.ballInHandPlayer = null;
     this.tableOpen = true;
+    this.lastShotSpeed = 0;
   }
 
   reset() {
@@ -56,6 +57,7 @@ export class Game {
     this.aiTimer = 0;
     this.aiShot = null;
     this.ballInHandPlayer = null;
+    this.lastShotSpeed = 0;
     this.notify();
   }
 
@@ -115,6 +117,7 @@ export class Game {
     if (!cue) return false;
 
     cue.vel.set(vx, vy);
+    this.lastShotSpeed = Math.hypot(vx, vy);
     this.state = GameState.SHOOTING;
     this.shotInProgress = true;
     this.pocketedThisShot = [];

@@ -1,4 +1,4 @@
-const CACHE = 'pool-v5';
+const CACHE = 'pool-v6';
 const ASSETS = [
   './',
   './play.html',

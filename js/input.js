@@ -65,11 +65,11 @@ export class InputController {
     this.onPowerChange?.(this.cue.getPowerPercent());
   }
 
-  fire() {
-    const shot = this.cue.fireShot();
+  fire(forceFull = false) {
+    const shot = this.cue.fireShot(forceFull);
     if (shot) {
       this.game.shoot(shot.vx, shot.vy);
-      if (navigator.vibrate) navigator.vibrate(12);
+      if (navigator.vibrate) navigator.vibrate(15);
     } else {
       this.cue.cancelAim();
     }

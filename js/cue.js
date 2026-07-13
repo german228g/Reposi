@@ -57,13 +57,16 @@ export class Cue {
   }
 
   /** Выстрел с текущим прицелом и силой */
-  fireShot() {
-    const speed = this.powerLevel * this.maxSpeed;
+  fireShot(forceFull = false) {
+    let level = forceFull ? 1 : this.powerLevel;
+    if (level < 0.12) level = 0.85;
+
+    const speed = level * this.maxSpeed;
     if (speed < this.minSpeed) return null;
 
     this.aiming = false;
     this.strikeAnim = 1;
-  const angle = this.aimAngle;
+    const angle = this.aimAngle;
     const shot = {
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,

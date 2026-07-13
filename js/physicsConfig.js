@@ -1,28 +1,30 @@
-/** Физика под размер стола (1600×880) */
+/**
+ * Физика v5 — скорости подобраны так, чтобы биток
+ * пересекал стол (~1600px) за доли секунды.
+ */
 export const PHYSICS = {
-  version: '4.0',
+  version: '5.0',
 
-  /** Скорость удара: v = powerLevel * maxSpeed */
+  /** px/сек при powerLevel=1. Полный стол ≈ 0.35 сек */
   maxSpeed(table) {
-    return table.width * 0.28;
+    return table.width * 2.8;
   },
 
   minSpeed(table) {
-    return table.width * 0.02;
+    return table.width * 0.18;
   },
 
-  /** Расстояние пальца от битка → полная сила */
   powerReach(table) {
-    return table.width * 0.32;
+    return table.width * 0.28;
   },
 
-  /** Экспоненциальное трение сукна (1/сек) */
-  frictionK: 0.55,
+  /** Трение сукна (1/сек). rollDistance ≈ v0 / frictionK */
+  frictionK: 2.1,
 
-  restitution: 0.96,
-  cushionRestitution: 0.9,
-  stopSpeed: 4,
-  substeps: 6,
+  restitution: 0.97,
+  cushionRestitution: 0.92,
+  stopSpeed: 12,
+  substeps: 8,
 };
 
 export function applyFriction(vel, dt) {
@@ -31,8 +33,7 @@ export function applyFriction(vel, dt) {
     vel.set(0, 0);
     return;
   }
-  const factor = Math.exp(-PHYSICS.frictionK * dt);
-  vel.scale(factor);
+  vel.scale(Math.exp(-PHYSICS.frictionK * dt));
 }
 
 export function rollDistance(initialSpeed) {
