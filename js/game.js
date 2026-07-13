@@ -1,10 +1,12 @@
 import { Vec2, resolveBallCollision, applyFriction, isMoving } from './physics.js';
 import { createRack, getBallGroup } from './balls.js';
+import { findBestShot } from './cue.js';
 
 export const GameState = {
   AIMING: 'aiming',
   SHOOTING: 'shooting',
   BALL_IN_HAND: 'ball_in_hand',
+  AI_THINKING: 'ai_thinking',
   GAME_OVER: 'game_over',
 };
 
@@ -13,40 +15,59 @@ export class Game {
     this.table = table;
     this.balls = [];
     this.state = GameState.AIMING;
-    this.playerGroup = null;
-    this.opponentGroup = null;
     this.currentPlayer = 1;
+    this.players = {
+      1: { name: 'Вы', isHuman: true, group: null },
+      2: { name: 'Соперник', isHuman: false, group: null },
+    };
     this.message = 'Потяните кий назад и отпустите';
     this.winner = null;
     this.firstShot = true;
     this.shotInProgress = false;
     this.pocketedThisShot = [];
-    this.hitBallThisShot = false;
-    this.cushionHitThisShot = false;
+    this.firstHitBall = null;
+    this.cushionBeforeHit = false;
     this.foul = false;
     this.foulReason = '';
-    this.ballInHandPos = null;
-    this.friction = 2.8;
+    this.friction = 3.2;
     this.onUpdate = null;
+    this.aiTimer = 0;
+    this.aiShot = null;
+    this.ballInHandPlayer = null;
+    this.tableOpen = true;
   }
 
   reset() {
     this.balls = createRack(this.table.bounds, this.table.ballRadius);
     this.state = GameState.AIMING;
-    this.playerGroup = null;
-    this.opponentGroup = null;
     this.currentPlayer = 1;
-    this.message = 'Разбейте пирамиду! Попадите в любой шар.';
+    this.players[1].group = null;
+    this.players[2].group = null;
+    this.message = 'Разбейте пирамиду! Ударьте по шарам.';
     this.winner = null;
     this.firstShot = true;
+    this.tableOpen = true;
     this.shotInProgress = false;
     this.pocketedThisShot = [];
-    this.hitBallThisShot = false;
-    this.cushionHitThisShot = false;
+    this.firstHitBall = null;
+    this.cushionBeforeHit = false;
     this.foul = false;
-    this.foulReason = '';
-    this.ballInHandPos = null;
+    this.aiTimer = 0;
+    this.aiShot = null;
+    this.ballInHandPlayer = null;
     this.notify();
+  }
+
+  isHumanTurn() {
+    return this.players[this.currentPlayer].isHuman;
+  }
+
+  getCurrentPlayer() {
+    return this.players[this.currentPlayer];
+  }
+
+  getPlayerGroup(playerId) {
+    return this.players[playerId].group;
   }
 
   getCueBall() {
@@ -54,19 +75,40 @@ export class Game {
   }
 
   getActiveBalls() {
-    return this.balls.filter(b => b.active && !b.pocketed);
+    return this.balls.filter(b => b.active && !b.pocketed && !b.pocketAnim);
+  }
+
+  hasAnimations() {
+    return this.balls.some(b => b.pocketAnim);
   }
 
   canShoot() {
-    return this.state === GameState.AIMING && !isMoving(this.balls);
+    return this.state === GameState.AIMING
+      && !isMoving(this.balls)
+      && !this.hasAnimations()
+      && this.isHumanTurn();
   }
 
   canPlaceCueBall() {
-    return this.state === GameState.BALL_IN_HAND;
+    return this.state === GameState.BALL_IN_HAND
+      && this.ballInHandPlayer === this.currentPlayer
+      && this.isHumanTurn();
+  }
+
+  getLegalTargets() {
+    const player = this.getCurrentPlayer();
+    if (this.tableOpen || !player.group) {
+      return this.balls.filter(b => b.active && !b.pocketed && !b.isCue && !b.isEight && !b.pocketAnim);
+    }
+    if (this.isGroupCleared(player.group)) {
+      return this.balls.filter(b => b.active && !b.pocketed && b.isEight && !b.pocketAnim);
+    }
+    return this.balls.filter(b => b.active && !b.pocketed && getBallGroup(b) === player.group && !b.pocketAnim);
   }
 
   shoot(vx, vy) {
-    if (!this.canShoot()) return false;
+    if (this.state !== GameState.AIMING && this.state !== GameState.AI_THINKING) return false;
+    if (isMoving(this.balls) || this.hasAnimations()) return false;
 
     const cue = this.getCueBall();
     if (!cue) return false;
@@ -75,11 +117,12 @@ export class Game {
     this.state = GameState.SHOOTING;
     this.shotInProgress = true;
     this.pocketedThisShot = [];
-    this.hitBallThisShot = false;
-    this.cushionHitThisShot = false;
+    this.firstHitBall = null;
+    this.cushionBeforeHit = false;
     this.foul = false;
     this.foulReason = '';
-    this.message = '';
+    this.aiShot = null;
+    this.message = this.isHumanTurn() ? '' : 'Соперник бьёт...';
     this.notify();
     return true;
   }
@@ -96,7 +139,7 @@ export class Game {
 
     for (const ball of this.balls) {
       if (ball.id === 0 || !ball.active || ball.pocketed) continue;
-      if (Vec2.dist({ x, y }, ball.pos) < r * 2.2) {
+      if (Vec2.dist({ x, y }, ball.pos) < r * 2.05) {
         this.message = 'Слишком близко к другому шару';
         this.notify();
         return false;
@@ -104,7 +147,7 @@ export class Game {
     }
 
     cue.reset(x, y);
-    this.ballInHandPos = null;
+    this.ballInHandPlayer = null;
     this.state = GameState.AIMING;
     this.message = 'Ваш удар';
     this.notify();
@@ -114,48 +157,134 @@ export class Game {
   update(dt) {
     if (this.state === GameState.GAME_OVER) return;
 
+    for (const ball of this.balls) {
+      if (ball.pocketAnim) {
+        ball.updatePocketAnim(dt);
+        continue;
+      }
+    }
+
+    if (this.state === GameState.AI_THINKING) {
+      this.aiTimer -= dt;
+      if (this.aiTimer <= 0 && this.aiShot) {
+        const { angle, power } = this.aiShot;
+        this.shoot(Math.cos(angle) * power, Math.sin(angle) * power);
+      }
+      return;
+    }
+
+    if (this.state !== GameState.SHOOTING) {
+      if (this.state === GameState.AIMING && !this.isHumanTurn() && !isMoving(this.balls) && !this.hasAnimations()) {
+        this.startAI();
+      }
+      if (this.state === GameState.BALL_IN_HAND && !this.isHumanTurn() && !isMoving(this.balls)) {
+        this.aiPlaceCueBall();
+      }
+      return;
+    }
+
     const activeBalls = this.getActiveBalls();
     let anyMoving = false;
 
     for (const ball of activeBalls) {
       ball.pos.add(Vec2.scale(ball.vel, dt));
       applyFriction(ball.vel, this.friction, dt);
-
-      if (ball.vel.length() > 0.05) anyMoving = true;
+      if (ball.vel.length() > 0.04) anyMoving = true;
 
       if (this.table.constrainBall(ball)) {
-        this.cushionHitThisShot = true;
+        if (!this.firstHitBall) this.cushionBeforeHit = true;
       }
 
       const pocket = this.table.checkPocket(ball);
       if (pocket) {
-        this.onBallPocketed(ball);
+        this.onBallPocketed(ball, pocket);
       }
     }
 
     for (let i = 0; i < activeBalls.length; i++) {
       for (let j = i + 1; j < activeBalls.length; j++) {
-        if (resolveBallCollision(activeBalls[i], activeBalls[j])) {
-          if (activeBalls[i].id === 0 || activeBalls[j].id === 0) {
-            this.hitBallThisShot = true;
-          }
+        if (resolveBallCollision(activeBalls[i], activeBalls[j], 0.96)) {
+          this.registerHit(activeBalls[i], activeBalls[j]);
         }
       }
     }
 
-    if (this.shotInProgress && !anyMoving && !isMoving(this.balls)) {
+    const stillMoving = anyMoving || isMoving(this.balls, 0.04);
+    const animating = this.hasAnimations();
+
+    if (this.shotInProgress && !stillMoving && !animating) {
       this.endShot();
     }
   }
 
-  onBallPocketed(ball) {
-    ball.pocket();
+  registerHit(a, b) {
+    if (!this.firstHitBall) {
+      if (a.id === 0) this.firstHitBall = b;
+      else if (b.id === 0) this.firstHitBall = a;
+    }
+  }
+
+  onBallPocketed(ball, pocket) {
+    if (ball.pocketAnim) return;
+    ball.startPocketAnim(pocket);
     this.pocketedThisShot.push(ball);
 
     if (ball.id === 0) {
       this.foul = true;
       this.foulReason = 'Биток в лузу';
     }
+  }
+
+  startAI() {
+    this.state = GameState.AI_THINKING;
+    this.aiTimer = 1.2 + Math.random() * 0.8;
+    const shot = findBestShot(this);
+    if (shot) {
+      const err = (Math.random() - 0.5) * 0.04;
+      const pErr = (Math.random() - 0.5) * 1.5;
+      this.aiShot = { angle: shot.angle + err, power: Math.max(4, shot.power + pErr) };
+    } else {
+      const cue = this.getCueBall();
+      this.aiShot = { angle: Math.random() * Math.PI * 2, power: 8 };
+      if (cue) {
+        const targets = this.getLegalTargets();
+        if (targets.length) {
+          const t = targets[Math.floor(Math.random() * targets.length)];
+          const dir = Vec2.sub(t.pos, cue.pos);
+          this.aiShot.angle = Math.atan2(dir.y, dir.x) + (Math.random() - 0.5) * 0.2;
+        }
+      }
+    }
+    this.message = 'Соперник прицеливается...';
+    this.notify();
+  }
+
+  aiPlaceCueBall() {
+    const b = this.table.bounds;
+    const r = this.table.ballRadius;
+    const cue = this.getCueBall();
+    let best = { x: b.cueX, y: b.cueY, score: 0 };
+
+    for (let i = 0; i < 40; i++) {
+      const x = b.left + r + Math.random() * (b.right - b.left - r * 2);
+      const y = b.top + r + Math.random() * (b.bottom - b.top - r * 2);
+      let ok = true;
+      for (const ball of this.balls) {
+        if (ball.id === 0 || !ball.active || ball.pocketed) continue;
+        if (Vec2.dist({ x, y }, ball.pos) < r * 2.1) { ok = false; break; }
+      }
+      if (!ok) continue;
+      cue.reset(x, y);
+      const shot = findBestShot(this);
+      const score = shot ? shot.score : Math.random() * 0.01;
+      if (score > best.score) best = { x, y, score };
+    }
+
+    cue.reset(best.x, best.y);
+    this.ballInHandPlayer = null;
+    this.state = GameState.AIMING;
+    this.message = 'Соперник бьёт...';
+    this.notify();
   }
 
   endShot() {
@@ -165,8 +294,7 @@ export class Game {
       this.resolveBreak();
       return;
     }
-
-  this.resolveNormalShot();
+    this.resolveNormalShot();
   }
 
   resolveBreak() {
@@ -179,143 +307,152 @@ export class Game {
       return;
     }
 
-    if (!this.hitBallThisShot) {
+    if (!this.firstHitBall) {
       this.handleFoul('Не попали ни в один шар');
       return;
     }
 
     if (objectBalls.length === 0) {
-      this.message = 'Разбой засчитан. Ещё один удар.';
-      this.state = GameState.AIMING;
-      this.notify();
+      this.continueTurn('Разбой! Ещё один удар.');
       return;
     }
 
-    this.assignGroups(objectBalls);
-    this.state = GameState.AIMING;
-    this.notify();
+    this.assignGroupsFromPocket(objectBalls);
+    this.tableOpen = false;
+    this.continueTurn(this.getTurnMessage(true));
   }
 
-  assignGroups(pocketed) {
-    const hasSolid = pocketed.some(b => b.isSolid);
-    const hasStripe = pocketed.some(b => b.isStripe);
+  assignGroupsFromPocket(pocketed) {
+    const solids = pocketed.filter(b => b.isSolid);
+    const stripes = pocketed.filter(b => b.isStripe);
 
-    if (hasSolid && !hasStripe) {
-      this.playerGroup = 'solid';
-      this.opponentGroup = 'stripe';
-      this.message = 'Ваши шары: цельные (1–7). Забейте восьмёрку в конце.';
-    } else if (hasStripe && !hasSolid) {
-      this.playerGroup = 'stripe';
-      this.opponentGroup = 'solid';
-      this.message = 'Ваши шары: полосатые (9–15). Забейте восьмёрку в конце.';
-    } else {
-      this.playerGroup = null;
-      this.message = 'Забито обе группы — выберите свою первым забитым шаром.';
+    if (solids.length && !stripes.length) {
+      this.players[this.currentPlayer].group = 'solid';
+      this.players[this.otherPlayer()].group = 'stripe';
+    } else if (stripes.length && !solids.length) {
+      this.players[this.currentPlayer].group = 'stripe';
+      this.players[this.otherPlayer()].group = 'solid';
     }
   }
 
   resolveNormalShot() {
+    const shooter = this.currentPlayer;
     const cuePocketed = this.pocketedThisShot.some(b => b.id === 0);
     const eightPocketed = this.pocketedThisShot.some(b => b.id === 8);
     const objectPocketed = this.pocketedThisShot.filter(b => b.id !== 0 && b.id !== 8);
 
     if (cuePocketed) {
-      this.handleFoul('Биток в лузу');
       if (eightPocketed) {
-        this.endGame(false, 'Восьмёрка забита вместе с битком — вы проиграли');
+        this.endGame(this.otherPlayer(), 'Восьмёрка с битком — поражение!');
+        return;
       }
+      this.handleFoul('Биток в лузу');
       return;
     }
 
-    if (!this.hitBallThisShot) {
+    if (!this.firstHitBall) {
       this.handleFoul('Не попали ни в один шар');
       return;
     }
 
-    if (this.playerGroup === null && objectPocketed.length > 0) {
-      const first = objectPocketed[0];
-      const group = getBallGroup(first);
-      if (group === 'solid') {
-        this.playerGroup = 'solid';
-        this.opponentGroup = 'stripe';
-        this.message = 'Ваши шары: цельные (1–7)';
-      } else if (group === 'stripe') {
-        this.playerGroup = 'stripe';
-        this.opponentGroup = 'solid';
-        this.message = 'Ваши шары: полосатые (9–15)';
+    if (!this.tableOpen && this.players[shooter].group) {
+      const legalFirst = this.isLegalFirstHit(this.firstHitBall, shooter);
+      if (!legalFirst) {
+        this.handleFoul('Первый контакт с чужим шаром');
+        return;
       }
     }
 
+    if (!this.players[shooter].group && objectPocketed.length) {
+      this.assignGroupsFromPocket(objectPocketed);
+      this.tableOpen = false;
+    }
+
     if (eightPocketed) {
-      const myGroupCleared = this.isGroupCleared(this.playerGroup);
-      if (myGroupCleared) {
-        this.endGame(true, 'Восьмёрка забита — вы победили!');
+      const group = this.players[shooter].group;
+      if (group && this.isGroupCleared(group)) {
+        this.endGame(shooter, `${this.players[shooter].name} победил!`);
       } else {
-        this.endGame(false, 'Восьмёрка забита рано — вы проиграли');
+        this.endGame(this.otherPlayer(), 'Восьмёрка забита рано — поражение!');
       }
       return;
     }
 
     let pocketedWrong = false;
     for (const ball of objectPocketed) {
-      const group = getBallGroup(ball);
-      if (this.playerGroup && group && group !== this.playerGroup) {
-        pocketedWrong = true;
-      }
+      const g = getBallGroup(ball);
+      const pg = this.players[shooter].group;
+      if (pg && g && g !== pg) pocketedWrong = true;
     }
 
-    if (this.foul || pocketedWrong) {
-      const reason = pocketedWrong ? 'Забит чужой шар' : this.foulReason;
-      this.handleFoul(reason);
+    if (pocketedWrong) {
+      this.handleFoul('Забит чужой шар');
       return;
     }
 
-    const pocketedOwn = objectPocketed.some(b => getBallGroup(b) === this.playerGroup);
+    const pocketedOwn = objectPocketed.some(b => getBallGroup(b) === this.players[shooter].group);
 
     if (pocketedOwn) {
-      this.message = 'Отличный удар! Ещё раз.';
+      this.continueTurn(this.getTurnMessage(true));
     } else {
-      this.switchPlayer();
-      this.message = 'Переход хода';
+      this.switchTurn();
+      this.state = GameState.AIMING;
+      this.message = `${this.players[this.currentPlayer].name} — ход`;
+      this.notify();
     }
-
-    this.state = GameState.AIMING;
-    this.notify();
   }
 
-  isGroupCleared(group) {
-    if (!group) return false;
-    return !this.balls.some(b => {
-      if (!b.active || b.pocketed) return false;
-      return getBallGroup(b) === group;
-    });
+  isLegalFirstHit(ball, shooter) {
+    if (!ball || ball.id === 0) return false;
+    const group = this.players[shooter].group;
+    if (!group) return !ball.isEight;
+    if (this.isGroupCleared(group)) return ball.isEight;
+    return getBallGroup(ball) === group;
   }
 
   handleFoul(reason) {
     this.foul = true;
     this.foulReason = reason;
-    this.switchPlayer();
-    this.respotCueBall();
-    this.message = `Фол: ${reason}. Свободный биток у соперника.`;
+    this.switchTurn();
+    const cue = this.getCueBall();
+    if (cue) {
+      cue.reset(this.table.bounds.cueX, this.table.bounds.cueY);
+    }
+    this.ballInHandPlayer = this.currentPlayer;
     this.state = GameState.BALL_IN_HAND;
+    const p = this.players[this.currentPlayer];
+    this.message = `Фол: ${reason}. ${p.name} — свободный биток.`;
     this.notify();
   }
 
-  respotCueBall() {
-    const cue = this.getCueBall();
-    cue.reset(this.table.bounds.cueX, this.table.bounds.cueY);
-    this.ballInHandPos = cue.pos.clone();
+  continueTurn(msg) {
+    this.state = GameState.AIMING;
+    this.message = msg;
+    this.notify();
   }
 
-  switchPlayer() {
-    this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
-    const temp = this.playerGroup;
-    this.playerGroup = this.opponentGroup;
-    this.opponentGroup = temp;
+  getTurnMessage(continued) {
+    const p = this.players[this.currentPlayer];
+    if (!p.group) return continued ? 'Хороший удар! Ещё раз.' : `${p.name} — ход`;
+    const g = p.group === 'solid' ? 'цельные' : 'полосатые';
+    return continued ? `Отлично! Забивайте ${g}.` : `${p.name} — ваши ${g}`;
   }
 
-  endGame(won, msg) {
-    this.winner = won ? 1 : 2;
+  switchTurn() {
+    this.currentPlayer = this.otherPlayer();
+  }
+
+  otherPlayer() {
+    return this.currentPlayer === 1 ? 2 : 1;
+  }
+
+  isGroupCleared(group) {
+    if (!group) return false;
+    return !this.balls.some(b => b.active && !b.pocketed && getBallGroup(b) === group);
+  }
+
+  endGame(winnerId, msg) {
+    this.winner = winnerId;
     this.state = GameState.GAME_OVER;
     this.message = msg;
     this.notify();
@@ -326,7 +463,14 @@ export class Game {
   }
 
   getGroupLabel() {
-    if (!this.playerGroup) return '—';
-    return this.playerGroup === 'solid' ? 'Цельные (1–7)' : 'Полосатые (9–15)';
+    const g = this.players[1].group;
+    if (!g) return '—';
+    return g === 'solid' ? 'Цельные (1–7)' : 'Полосатые (9–15)';
+  }
+
+  getOpponentGroupLabel() {
+    const g = this.players[2].group;
+    if (!g) return '—';
+    return g === 'solid' ? 'Цельные' : 'Полосатые';
   }
 }

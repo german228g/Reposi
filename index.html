@@ -2,20 +2,37 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Бильярд — 8 Ball Pool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>8 Ball Pool</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="app">
     <header class="header">
       <h1>8 Ball Pool</h1>
-      <div class="hud">
-        <div class="hud-item" id="turn-indicator">Ваш удар</div>
-        <div class="hud-item" id="group-indicator">Группа: —</div>
-        <div class="hud-item" id="message">Потяните кий назад и отпустите</div>
+      <div class="players-bar">
+        <div class="player-card active" id="player-panel">
+          <div class="player-avatar you">Вы</div>
+          <div class="player-info">
+            <span class="player-name">Вы</span>
+            <span class="player-group" id="group-indicator">Ваши: —</span>
+          </div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="player-card" id="opponent-panel">
+          <div class="player-avatar ai">AI</div>
+          <div class="player-info">
+            <span class="player-name">Соперник</span>
+            <span class="player-group" id="opponent-indicator">Соперник: —</span>
+          </div>
+        </div>
       </div>
     </header>
+
+    <div class="status-bar">
+      <span id="turn-indicator">Ваш ход</span>
+      <span id="message">Потяните кий назад и отпустите</span>
+    </div>
 
     <main class="game-area">
       <canvas id="table-canvas"></canvas>
@@ -29,7 +46,7 @@
 
     <footer class="footer">
       <button id="btn-reset" class="btn">Новая игра</button>
-      <button id="btn-aim-line" class="btn btn-secondary">Линия прицела</button>
+      <button id="btn-aim-line" class="btn btn-secondary">Линия прицела: вкл</button>
     </footer>
   </div>
 

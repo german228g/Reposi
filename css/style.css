@@ -5,200 +5,214 @@
 }
 
 :root {
-  --felt: #1a6b3c;
-  --rail: #5c3a1e;
-  --rail-light: #8b5a2b;
-  --bg: #0f1419;
+  --bg: #0b0f14;
   --text: #e8e6e3;
   --accent: #f0c040;
-  --panel: #1a2332;
+  --panel: #151c28;
+  --panel-active: #1e2d42;
+  --you: #2ecc71;
+  --ai: #e74c3c;
+}
+
+html, body {
+  height: 100%;
+  overflow-x: hidden;
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: radial-gradient(ellipse at 50% 0%, #1a2540 0%, var(--bg) 60%);
   color: var(--text);
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  min-height: 100dvh;
 }
 
 .app {
-  width: min(100vw, 1100px);
-  padding: 16px;
+  width: min(100vw, 1200px);
+  margin: 0 auto;
+  padding: 10px 10px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  min-height: 100dvh;
 }
 
 .header h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
   color: var(--accent);
-  letter-spacing: 0.05em;
+  text-align: center;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
 }
 
-.hud {
+.players-bar {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
 }
 
-.hud-item {
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: var(--panel);
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 8px 12px;
+  flex: 1;
+  max-width: 180px;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-#message {
+.player-card.active {
+  border-color: var(--accent);
+  background: var(--panel-active);
+  box-shadow: 0 0 16px rgba(240, 192, 64, 0.15);
+}
+
+.player-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.player-avatar.you { background: linear-gradient(135deg, #27ae60, #1e8449); }
+.player-avatar.ai { background: linear-gradient(135deg, #c0392b, #922b21); }
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.player-group {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.vs {
+  font-size: 0.75rem;
+  font-weight: 900;
   color: var(--accent);
+  opacity: 0.6;
 }
 
-.game-area {
-  position: relative;
+.status-bar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+#turn-indicator {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+#message {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 #table-canvas {
   display: block;
+  width: 100%;
   max-width: 100%;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    inset 0 0 0 3px var(--rail);
-  cursor: crosshair;
+    0 12px 48px rgba(0, 0, 0, 0.7),
+    0 0 0 2px rgba(139, 90, 43, 0.5);
   touch-action: none;
+  cursor: crosshair;
 }
 
 .power-meter {
-  width: min(100%, 400px);
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 0 4px;
 }
 
 .power-meter-label {
-  font-size: 0.85rem;
-  min-width: 40px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 36px;
 }
 
 .power-meter-bar {
   flex: 1;
-  height: 12px;
+  height: 14px;
   background: var(--panel);
-  border-radius: 6px;
+  border-radius: 7px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .power-meter-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #4ade80, #facc15, #ef4444);
-  border-radius: 6px;
-  transition: width 0.05s linear;
+  background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c);
+  border-radius: 7px;
+  transition: width 0.04s linear;
+  box-shadow: 0 0 8px rgba(241, 196, 15, 0.4);
 }
 
 .footer {
   display: flex;
-  gap: 10px;
-  justify-content: center;
+  gap: 8px;
 }
 
 .btn {
-  padding: 10px 20px;
+  flex: 1;
+  padding: 13px 16px;
   border: none;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  background: var(--accent);
+  background: linear-gradient(180deg, #f5d060, #d4a020);
   color: #1a1a1a;
-  transition: transform 0.1s, opacity 0.1s;
+  transition: transform 0.1s;
 }
 
-.btn:hover {
-  transform: translateY(-1px);
-}
-
-.btn:active {
-  transform: translateY(0);
-}
+.btn:active { transform: scale(0.97); }
 
 .btn-secondary {
   background: var(--panel);
   color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-@media (max-width: 600px) {
-  body {
-    align-items: flex-start;
-  }
-
-  .app {
-    padding: 10px 8px 16px;
-    gap: 8px;
-    min-height: 100vh;
-    min-height: 100dvh;
-  }
-
-  .header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .header h1 {
-    font-size: 1.25rem;
-    text-align: center;
-  }
-
-  .hud {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .hud-item {
-    padding: 10px 12px;
-    font-size: 0.85rem;
-    text-align: center;
-  }
-
-  #table-canvas {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-  }
-
-  .power-meter {
-    width: 100%;
-    padding: 0 4px;
-  }
-
-  .footer {
-    flex-direction: column;
-    gap: 8px;
-    padding: 0 4px;
-  }
-
-  .btn {
-    width: 100%;
-    padding: 14px 20px;
-    font-size: 1rem;
-  }
+@media (max-width: 400px) {
+  .player-card { padding: 6px 8px; max-width: 150px; }
+  .player-avatar { width: 30px; height: 30px; font-size: 0.6rem; }
+  .player-name { font-size: 0.78rem; }
+  .player-group { font-size: 0.65rem; }
 }
