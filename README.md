@@ -1,16 +1,9 @@
 # 8 Ball Pool
 
-## 📱 Играть на iPhone (только телефон, без Mac)
+## 📱 Играть на iPhone
 
-# 👉 https://tinyurl.com/2apayplf
+# 👉 https://tinyurl.com/2aaummmn
 
-1. Скопируйте ссылку
-2. Откройте **Safari**
-3. Вставьте в адресную строку
-4. Нажмите **▶ ИГРАТЬ**
+Скопируйте → Safari → вставьте → **▶ ИГРАТЬ**
 
-[Подробная инструкция](IPHONE.md)
-
-```bash
-node scripts/build.mjs   # пересобрать play.html
-```
+[Инструкция с картинками](IPHONE.md)
