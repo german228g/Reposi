@@ -8,7 +8,7 @@ export class Table {
 
     this.railWidth = 42;
     this.ballRadius = 14;
-    this.pocketRadius = 32;
+    this.pocketRadius = 40;
 
     this.logicalWidth = 1600;
     this.logicalHeight = 880;
@@ -49,41 +49,74 @@ export class Table {
     };
   }
 
+  /** Лузы на углах и серединах бортов — там, куда реально доезжают шары */
   computePockets() {
-    const inset = this.railWidth * 0.42;
+    const b = this.bounds;
     const w = this.width;
-    const h = this.height;
     return [
-      { x: inset, y: inset },
-      { x: w / 2, y: inset * 0.75 },
-      { x: w - inset, y: inset },
-      { x: inset, y: h - inset },
-      { x: w / 2, y: h - inset * 0.75 },
-      { x: w - inset, y: h - inset },
+      { x: b.left, y: b.top, type: 'corner' },
+      { x: w / 2, y: b.top, type: 'side' },
+      { x: b.right, y: b.top, type: 'corner' },
+      { x: b.left, y: b.bottom, type: 'corner' },
+      { x: w / 2, y: b.bottom, type: 'side' },
+      { x: b.right, y: b.bottom, type: 'corner' },
     ];
   }
 
-  constrainBall(ball, restitution = 0.88) {
+  distToPocket(ball, pocket) {
+    return Vec2.dist(ball.pos, pocket);
+  }
+
+  /** Зона лузы — в ней борт не отбивает шар */
+  isInPocketZone(ball, pocket) {
+    const d = this.distToPocket(ball, pocket);
+    const jaw = this.pocketRadius + ball.radius * 1.8;
+    if (pocket.type === 'corner') return d < jaw;
+    const along = pocket.type === 'side' && pocket.y < this.height / 2
+      ? Math.abs(ball.pos.x - pocket.x) < jaw * 0.85
+      : Math.abs(ball.pos.x - pocket.x) < jaw * 0.85;
+    return d < jaw && along;
+  }
+
+  isNearAnyPocket(ball) {
+    return this.pockets.some(p => this.isInPocketZone(ball, p));
+  }
+
+  /** Борт с вырезами под лузы */
+  constrainBall(ball, restitution = 0.92) {
     const b = this.bounds;
     const r = ball.radius;
     let hit = false;
 
-    if (ball.pos.x - r < b.left) {
+    const skipLeft = this.pockets.some(p =>
+      (p.type === 'corner' && p.x <= b.left && this.isInPocketZone(ball, p))
+    );
+    const skipRight = this.pockets.some(p =>
+      (p.type === 'corner' && p.x >= b.right && this.isInPocketZone(ball, p))
+    );
+    const skipTop = this.pockets.some(p =>
+      (p.y <= b.top) && this.isInPocketZone(ball, p)
+    );
+    const skipBottom = this.pockets.some(p =>
+      (p.y >= b.bottom) && this.isInPocketZone(ball, p)
+    );
+
+    if (!skipLeft && ball.pos.x - r < b.left) {
       ball.pos.x = b.left + r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(1, 0), restitution);
       hit = true;
     }
-    if (ball.pos.x + r > b.right) {
+    if (!skipRight && ball.pos.x + r > b.right) {
       ball.pos.x = b.right - r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(-1, 0), restitution);
       hit = true;
     }
-    if (ball.pos.y - r < b.top) {
+    if (!skipTop && ball.pos.y - r < b.top) {
       ball.pos.y = b.top + r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(0, 1), restitution);
       hit = true;
     }
-    if (ball.pos.y + r > b.bottom) {
+    if (!skipBottom && ball.pos.y + r > b.bottom) {
       ball.pos.y = b.bottom - r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(0, -1), restitution);
       hit = true;
@@ -94,10 +127,23 @@ export class Table {
 
   checkPocket(ball) {
     if (ball.pocketAnim) return null;
+
     for (const pocket of this.pockets) {
-      const dist = Vec2.dist(ball.pos, pocket);
-      const capture = this.pocketRadius - ball.radius * 0.15;
+      const dist = this.distToPocket(ball, pocket);
+      const capture = this.pocketRadius + ball.radius * 0.55;
+
       if (dist < capture) return pocket;
+
+      const jaw = this.pocketRadius + ball.radius * 2.2;
+      if (dist < jaw) {
+        const toPocket = Vec2.sub(pocket, ball.pos);
+        const speed = ball.vel.length();
+        if (speed > 8) {
+          toPocket.normalize();
+          const approach = ball.vel.dot(toPocket);
+          if (approach > speed * 0.25) return pocket;
+        }
+      }
     }
     return null;
   }
@@ -110,9 +156,5 @@ export class Table {
       (screenX - rect.left) * scaleX,
       (screenY - rect.top) * scaleY
     );
-  }
-
-  getBoundsForAim() {
-    return this.bounds;
   }
 }

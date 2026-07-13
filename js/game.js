@@ -194,22 +194,27 @@ export class Game {
 
     for (let step = 0; step < steps; step++) {
       for (const ball of activeBalls) {
+        if (ball.pocketAnim) continue;
+
         ball.pos.add(Vec2.scale(ball.vel, subDt));
         applyFriction(ball.vel, subDt);
         if (ball.vel.length() > PHYSICS.stopSpeed) anyMoving = true;
 
-        if (this.table.constrainBall(ball, PHYSICS.cushionRestitution)) {
-          if (!this.firstHitBall) this.cushionBeforeHit = true;
-        }
-
         const pocket = this.table.checkPocket(ball);
         if (pocket) {
           this.onBallPocketed(ball, pocket);
+          continue;
+        }
+
+        if (this.table.constrainBall(ball, PHYSICS.cushionRestitution)) {
+          if (!this.firstHitBall) this.cushionBeforeHit = true;
         }
       }
 
       for (let i = 0; i < activeBalls.length; i++) {
+        if (activeBalls[i].pocketAnim) continue;
         for (let j = i + 1; j < activeBalls.length; j++) {
+          if (activeBalls[j].pocketAnim) continue;
           if (resolveBallCollision(activeBalls[i], activeBalls[j], PHYSICS.restitution)) {
             this.registerHit(activeBalls[i], activeBalls[j]);
           }
@@ -240,7 +245,14 @@ export class Game {
     if (ball.id === 0) {
       this.foul = true;
       this.foulReason = 'Биток в лузу';
+    } else if (ball.id !== 8) {
+      this.message = `Забит шар ${ball.id}!`;
+      if (navigator.vibrate) navigator.vibrate([20, 30, 20]);
+    } else {
+      this.message = 'Восьмёрка в лузе!';
+      if (navigator.vibrate) navigator.vibrate(40);
     }
+    this.notify();
   }
 
   startAI() {

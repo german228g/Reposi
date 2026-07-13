@@ -28,6 +28,7 @@ const standalone = body.replace(
 
 writeFileSync('play.html', standalone);
 writeFileSync('pool-v5.html', standalone);
+writeFileSync('pool-v51.html', standalone);
 
 cpSync('icons', 'dist/icons', { recursive: true });
 writeFileSync('dist/styles.css', css);

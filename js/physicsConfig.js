@@ -3,7 +3,7 @@
  * пересекал стол (~1600px) за доли секунды.
  */
 export const PHYSICS = {
-  version: '5.0',
+  version: '5.1',
 
   /** px/сек при powerLevel=1. Полный стол ≈ 0.35 сек */
   maxSpeed(table) {

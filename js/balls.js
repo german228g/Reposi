@@ -27,14 +27,21 @@ export class Ball {
   }
 
   startPocketAnim(pocket) {
-    this.pocketAnim = { t: 0, duration: 0.35 };
+    this.pocketAnim = { t: 0, duration: 0.28 };
     this.pocketTarget = pocket;
     this.vel.set(0, 0);
   }
 
   updatePocketAnim(dt) {
-    if (!this.pocketAnim) return false;
+    if (!this.pocketAnim || !this.pocketTarget) return false;
+
     this.pocketAnim.t += dt / this.pocketAnim.duration;
+
+    const t = Math.min(1, this.pocketAnim.t);
+    const target = this.pocketTarget;
+    this.pos.x += (target.x - this.pos.x) * 0.18;
+    this.pos.y += (target.y - this.pos.y) * 0.18;
+
     if (this.pocketAnim.t >= 1) {
       this.pocketed = true;
       this.active = false;

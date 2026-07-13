@@ -448,7 +448,7 @@ body {
     <div class="status-bar">
       <span id="turn-indicator">Ваш ход</span>
       <span id="message">Коснитесь стола → ведите палец → отпустите</span>
-      <span id="version-tag" class="version-tag">v5.0</span>
+      <span id="version-tag" class="version-tag">v5.1</span>
       <span id="speed-debug" class="speed-debug"></span>
     </div>
 
@@ -565,7 +565,7 @@ var Table = class {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.railWidth = 42;
     this.ballRadius = 14;
-    this.pocketRadius = 32;
+    this.pocketRadius = 40;
     this.logicalWidth = 1600;
     this.logicalHeight = 880;
     this.resize();
@@ -600,39 +600,66 @@ var Table = class {
       rackY: this.height / 2
     };
   }
+  /** Лузы на углах и серединах бортов — там, куда реально доезжают шары */
   computePockets() {
-    const inset = this.railWidth * 0.42;
+    const b = this.bounds;
     const w = this.width;
-    const h = this.height;
     return [
-      { x: inset, y: inset },
-      { x: w / 2, y: inset * 0.75 },
-      { x: w - inset, y: inset },
-      { x: inset, y: h - inset },
-      { x: w / 2, y: h - inset * 0.75 },
-      { x: w - inset, y: h - inset }
+      { x: b.left, y: b.top, type: "corner" },
+      { x: w / 2, y: b.top, type: "side" },
+      { x: b.right, y: b.top, type: "corner" },
+      { x: b.left, y: b.bottom, type: "corner" },
+      { x: w / 2, y: b.bottom, type: "side" },
+      { x: b.right, y: b.bottom, type: "corner" }
     ];
   }
-  constrainBall(ball, restitution = 0.88) {
+  distToPocket(ball, pocket) {
+    return Vec2.dist(ball.pos, pocket);
+  }
+  /** Зона лузы — в ней борт не отбивает шар */
+  isInPocketZone(ball, pocket) {
+    const d = this.distToPocket(ball, pocket);
+    const jaw = this.pocketRadius + ball.radius * 1.8;
+    if (pocket.type === "corner") return d < jaw;
+    const along = pocket.type === "side" && pocket.y < this.height / 2 ? Math.abs(ball.pos.x - pocket.x) < jaw * 0.85 : Math.abs(ball.pos.x - pocket.x) < jaw * 0.85;
+    return d < jaw && along;
+  }
+  isNearAnyPocket(ball) {
+    return this.pockets.some((p) => this.isInPocketZone(ball, p));
+  }
+  /** Борт с вырезами под лузы */
+  constrainBall(ball, restitution = 0.92) {
     const b = this.bounds;
     const r = ball.radius;
     let hit = false;
-    if (ball.pos.x - r < b.left) {
+    const skipLeft = this.pockets.some(
+      (p) => p.type === "corner" && p.x <= b.left && this.isInPocketZone(ball, p)
+    );
+    const skipRight = this.pockets.some(
+      (p) => p.type === "corner" && p.x >= b.right && this.isInPocketZone(ball, p)
+    );
+    const skipTop = this.pockets.some(
+      (p) => p.y <= b.top && this.isInPocketZone(ball, p)
+    );
+    const skipBottom = this.pockets.some(
+      (p) => p.y >= b.bottom && this.isInPocketZone(ball, p)
+    );
+    if (!skipLeft && ball.pos.x - r < b.left) {
       ball.pos.x = b.left + r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(1, 0), restitution);
       hit = true;
     }
-    if (ball.pos.x + r > b.right) {
+    if (!skipRight && ball.pos.x + r > b.right) {
       ball.pos.x = b.right - r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(-1, 0), restitution);
       hit = true;
     }
-    if (ball.pos.y - r < b.top) {
+    if (!skipTop && ball.pos.y - r < b.top) {
       ball.pos.y = b.top + r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(0, 1), restitution);
       hit = true;
     }
-    if (ball.pos.y + r > b.bottom) {
+    if (!skipBottom && ball.pos.y + r > b.bottom) {
       ball.pos.y = b.bottom - r;
       reflectOffCushion(ball.pos, ball.vel, new Vec2(0, -1), restitution);
       hit = true;
@@ -642,9 +669,19 @@ var Table = class {
   checkPocket(ball) {
     if (ball.pocketAnim) return null;
     for (const pocket of this.pockets) {
-      const dist = Vec2.dist(ball.pos, pocket);
-      const capture = this.pocketRadius - ball.radius * 0.15;
+      const dist = this.distToPocket(ball, pocket);
+      const capture = this.pocketRadius + ball.radius * 0.55;
       if (dist < capture) return pocket;
+      const jaw = this.pocketRadius + ball.radius * 2.2;
+      if (dist < jaw) {
+        const toPocket = Vec2.sub(pocket, ball.pos);
+        const speed = ball.vel.length();
+        if (speed > 8) {
+          toPocket.normalize();
+          const approach = ball.vel.dot(toPocket);
+          if (approach > speed * 0.25) return pocket;
+        }
+      }
     }
     return null;
   }
@@ -657,14 +694,11 @@ var Table = class {
       (screenY - rect.top) * scaleY
     );
   }
-  getBoundsForAim() {
-    return this.bounds;
-  }
 };
 
 // js/physicsConfig.js
 var PHYSICS = {
-  version: "5.0",
+  version: "5.1",
   /** px/сек при powerLevel=1. Полный стол ≈ 0.35 сек */
   maxSpeed(table2) {
     return table2.width * 2.8;
@@ -717,13 +751,17 @@ var Ball = class {
     this.spin = 0;
   }
   startPocketAnim(pocket) {
-    this.pocketAnim = { t: 0, duration: 0.35 };
+    this.pocketAnim = { t: 0, duration: 0.28 };
     this.pocketTarget = pocket;
     this.vel.set(0, 0);
   }
   updatePocketAnim(dt) {
-    if (!this.pocketAnim) return false;
+    if (!this.pocketAnim || !this.pocketTarget) return false;
     this.pocketAnim.t += dt / this.pocketAnim.duration;
+    const t = Math.min(1, this.pocketAnim.t);
+    const target = this.pocketTarget;
+    this.pos.x += (target.x - this.pos.x) * 0.18;
+    this.pos.y += (target.y - this.pos.y) * 0.18;
     if (this.pocketAnim.t >= 1) {
       this.pocketed = true;
       this.active = false;
@@ -1164,19 +1202,23 @@ var Game = class {
     let anyMoving = false;
     for (let step = 0; step < steps; step++) {
       for (const ball of activeBalls) {
+        if (ball.pocketAnim) continue;
         ball.pos.add(Vec2.scale(ball.vel, subDt));
         applyFriction(ball.vel, subDt);
         if (ball.vel.length() > PHYSICS.stopSpeed) anyMoving = true;
-        if (this.table.constrainBall(ball, PHYSICS.cushionRestitution)) {
-          if (!this.firstHitBall) this.cushionBeforeHit = true;
-        }
         const pocket = this.table.checkPocket(ball);
         if (pocket) {
           this.onBallPocketed(ball, pocket);
+          continue;
+        }
+        if (this.table.constrainBall(ball, PHYSICS.cushionRestitution)) {
+          if (!this.firstHitBall) this.cushionBeforeHit = true;
         }
       }
       for (let i = 0; i < activeBalls.length; i++) {
+        if (activeBalls[i].pocketAnim) continue;
         for (let j = i + 1; j < activeBalls.length; j++) {
+          if (activeBalls[j].pocketAnim) continue;
           if (resolveBallCollision(activeBalls[i], activeBalls[j], PHYSICS.restitution)) {
             this.registerHit(activeBalls[i], activeBalls[j]);
           }
@@ -1202,7 +1244,14 @@ var Game = class {
     if (ball.id === 0) {
       this.foul = true;
       this.foulReason = "\u0411\u0438\u0442\u043E\u043A \u0432 \u043B\u0443\u0437\u0443";
+    } else if (ball.id !== 8) {
+      this.message = `\u0417\u0430\u0431\u0438\u0442 \u0448\u0430\u0440 ${ball.id}!`;
+      if (navigator.vibrate) navigator.vibrate([20, 30, 20]);
+    } else {
+      this.message = "\u0412\u043E\u0441\u044C\u043C\u0451\u0440\u043A\u0430 \u0432 \u043B\u0443\u0437\u0435!";
+      if (navigator.vibrate) navigator.vibrate(40);
     }
+    this.notify();
   }
   startAI() {
     this.state = GameState.AI_THINKING;
