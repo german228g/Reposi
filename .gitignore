@@ -1,4 +1,4 @@
 node_modules/
-data/
+data/raw/
 *.log
 .DS_Store

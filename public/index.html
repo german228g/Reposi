@@ -1,67 +1,41 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Регистрация</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <title>Карта України — DeepState 2026</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <main class="page">
-    <div class="card">
-      <div class="brand">
-        <div class="logo">●</div>
-        <h1>Создать аккаунт</h1>
-        <p class="subtitle">Заполните форму, чтобы зарегистрироваться</p>
-      </div>
+  <div id="map"></div>
 
-      <form id="register-form" novalidate>
-        <label class="field">
-          <span class="label">Имя</span>
-          <input type="text" name="name" id="name" autocomplete="name" placeholder="Иван Иванов">
-          <small class="hint" data-for="name"></small>
-        </label>
-
-        <label class="field">
-          <span class="label">Email</span>
-          <input type="email" name="email" id="email" autocomplete="email" placeholder="ivan@example.com">
-          <small class="hint" data-for="email"></small>
-        </label>
-
-        <label class="field">
-          <span class="label">Пароль</span>
-          <input type="password" name="password" id="password" autocomplete="new-password" placeholder="минимум 6 символов">
-          <small class="hint" data-for="password"></small>
-        </label>
-
-        <label class="field">
-          <span class="label">Подтвердите пароль</span>
-          <input type="password" name="confirm" id="confirm" autocomplete="new-password" placeholder="повторите пароль">
-          <small class="hint" data-for="confirm"></small>
-        </label>
-
-        <label class="agree">
-          <input type="checkbox" id="agree">
-          <span>Я согласен с условиями использования и политикой конфиденциальности</span>
-        </label>
-
-        <button type="submit" class="btn" id="submit-btn">Зарегистрироваться</button>
-
-        <div class="server-msg" id="server-msg"></div>
-      </form>
-
-      <p class="footer">Уже есть аккаунт? <a href="#">Войти</a></p>
+  <aside id="sidebar">
+    <div class="brand">
+      <h1>Карта України</h1>
+      <p class="sub">DeepState-стиль · населення 2026</p>
     </div>
 
-    <div class="users-panel" id="users-panel" hidden>
-      <div class="users-head">
-        <h2>Зарегистрированные пользователи</h2>
-        <button class="link-btn" id="refresh-users">Обновить</button>
-      </div>
-      <div id="users-list" class="users-list"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="background:#d32f2f"></span> Окуповано РФ</div>
+      <div class="legend-item"><span class="dot" style="background:#f59e0b"></span> Зона бойових дій</div>
+      <div class="legend-item"><span class="dot" style="background:#388e3c"></span> Під контролем України</div>
     </div>
-  </main>
+
+    <div id="info" class="info">
+      <p class="hint">Натисніть на область, район чи громаду, щоб побачити орієнтовне населення на 2026 рік.</p>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="note">
+      Населення — <b>оцінка</b> на 2026 рік (війна, біженці, мобілізація). Дані районів/громад
+      розподіляються пропорційно площі області. Джерело меж: ukrainian_geodata (АТУ 2020).
+    </div>
+  </aside>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="js/data.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

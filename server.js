@@ -1,71 +1,47 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import http from 'http';
+import { readFileSync, existsSync, statSync } from 'fs';
+import { extname, join, normalize } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { createGzip } from 'zlib';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const app = express();
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const ROOT = join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.static(join(__dirname, 'public')));
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.geojson': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+};
 
-const DATA_DIR = join(__dirname, 'data');
-const USERS_FILE = join(DATA_DIR, 'users.json');
-
-function loadUsers() {
-  if (!existsSync(USERS_FILE)) return [];
-  try {
-    return JSON.parse(readFileSync(USERS_FILE, 'utf8'));
-  } catch {
-    return [];
+const server = http.createServer((req, res) => {
+  let urlPath = decodeURIComponent(req.url.split('?')[0]);
+  if (urlPath === '/') urlPath = '/index.html';
+  const filePath = normalize(join(ROOT, urlPath));
+  if (!filePath.startsWith(ROOT) || !existsSync(filePath) || !statSync(filePath).isFile()) {
+    res.writeHead(404);
+    res.end('Not found');
+    return;
   }
-}
-
-function saveUsers(users) {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-app.post('/api/register', async (req, res) => {
-  const { name, email, password, confirm } = req.body || {};
-
-  const errors = [];
-  if (!name || name.trim().length < 2) errors.push('Имя должно содержать минимум 2 символа.');
-  if (!email || !EMAIL_RE.test(email)) errors.push('Некорректный email.');
-  if (!password || password.length < 6) errors.push('Пароль должен быть не короче 6 символов.');
-  if (password !== confirm) errors.push('Пароли не совпадают.');
-
-  if (errors.length) return res.status(400).json({ ok: false, errors });
-
-  const users = loadUsers();
-  const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (exists) return res.status(409).json({ ok: false, errors: ['Пользователь с таким email уже зарегистрирован.'] });
-
-  const hash = await bcrypt.hash(password, 10);
-  const user = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    passwordHash: hash,
-    createdAt: new Date().toISOString(),
-  };
-  users.push(user);
-  saveUsers(users);
-
-  return res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
+  const ext = extname(filePath).toLowerCase();
+  const body = readFileSync(filePath);
+  const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache' };
+  const acceptGzip = (req.headers['accept-encoding'] || '').includes('gzip');
+  if (acceptGzip && (ext === '.json' || ext === '.geojson' || ext === '.html' || ext === '.js' || ext === '.css') && body.length > 1024) {
+    const gz = createGzip();
+    res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip' });
+    gz.end(body);
+    gz.pipe(res);
+  } else {
+    res.writeHead(200, headers);
+    res.end(body);
+  }
 });
 
-app.get('/api/users', (req, res) => {
-  const users = loadUsers().map(({ passwordHash, ...u }) => u);
-  res.json({ ok: true, count: users.length, users });
-});
-
-app.get('/api/health', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
-
-app.listen(PORT, () => {
-  console.log(`Сайт регистрации запущен: http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Карта України: http://localhost:${PORT}`));
