@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Регистрация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="page">
+    <div class="card">
+      <div class="brand">
+        <div class="logo">●</div>
+        <h1>Создать аккаунт</h1>
+        <p class="subtitle">Заполните форму, чтобы зарегистрироваться</p>
+      </div>
+
+      <form id="register-form" novalidate>
+        <label class="field">
+          <span class="label">Имя</span>
+          <input type="text" name="name" id="name" autocomplete="name" placeholder="Иван Иванов">
+          <small class="hint" data-for="name"></small>
+        </label>
+
+        <label class="field">
+          <span class="label">Email</span>
+          <input type="email" name="email" id="email" autocomplete="email" placeholder="ivan@example.com">
+          <small class="hint" data-for="email"></small>
+        </label>
+
+        <label class="field">
+          <span class="label">Пароль</span>
+          <input type="password" name="password" id="password" autocomplete="new-password" placeholder="минимум 6 символов">
+          <small class="hint" data-for="password"></small>
+        </label>
+
+        <label class="field">
+          <span class="label">Подтвердите пароль</span>
+          <input type="password" name="confirm" id="confirm" autocomplete="new-password" placeholder="повторите пароль">
+          <small class="hint" data-for="confirm"></small>
+        </label>
+
+        <label class="agree">
+          <input type="checkbox" id="agree">
+          <span>Я согласен с условиями использования и политикой конфиденциальности</span>
+        </label>
+
+        <button type="submit" class="btn" id="submit-btn">Зарегистрироваться</button>
+
+        <div class="server-msg" id="server-msg"></div>
+      </form>
+
+      <p class="footer">Уже есть аккаунт? <a href="#">Войти</a></p>
+    </div>
+
+    <div class="users-panel" id="users-panel" hidden>
+      <div class="users-head">
+        <h2>Зарегистрированные пользователи</h2>
+        <button class="link-btn" id="refresh-users">Обновить</button>
+      </div>
+      <div id="users-list" class="users-list"></div>
+    </div>
+  </main>
+  <script src="js/app.js"></script>
+</body>
+</html>
