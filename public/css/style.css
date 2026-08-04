@@ -1,0 +1,45 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; font-family: "Inter", "Segoe UI", system-ui, Roboto, Arial, sans-serif; }
+#map { position: absolute; top: 0; left: 320px; right: 0; bottom: 0; height: 100%; }
+@media (max-width: 700px) { #map { left: 0; top: 0; } }
+
+#sidebar {
+  position: absolute; top: 0; left: 0; width: 320px; height: 100%;
+  background: #0b1020; color: #e7ecf5;
+  padding: 18px 16px; overflow-y: auto;
+  box-shadow: 4px 0 24px rgba(0,0,0,.4);
+  z-index: 1000;
+}
+@media (max-width: 700px) {
+  #sidebar { width: 100%; height: auto; position: relative; max-height: 45vh; }
+  #map { height: 55vh; }
+  html, body { height: auto; }
+}
+
+.brand h1 { margin: 0 0 2px; font-size: 18px; }
+.brand .sub { margin: 0 0 14px; color: #8b95ad; font-size: 12px; }
+
+.legend { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,.05); border-radius: 10px; }
+.legend-item { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+.info { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-height: 90px; }
+.info .hint { margin: 0; color: #8b95ad; font-size: 13px; }
+.info h2 { margin: 0 0 8px; font-size: 16px; }
+.info .row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,.08); }
+.info .row:last-child { border-bottom: none; }
+.info .row .v { font-weight: 600; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: #fff; }
+.badge.occupied { background: #d32f2f; }
+.badge.contested { background: #f59e0b; color: #3a2a00; }
+.badge.liberated { background: #388e3c; }
+
+.summary { background: rgba(255,255,255,.04); border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 13px; }
+.summary h3 { margin: 0 0 8px; font-size: 13px; color: #8b95ad; text-transform: uppercase; letter-spacing: .5px; }
+.summary .row { display: flex; justify-content: space-between; padding: 3px 0; }
+
+.note { font-size: 11px; color: #6b7689; line-height: 1.5; }
+
+.leaflet-popup-content h3 { margin: 0 0 6px; }
+.leaflet-popup-content .pop { font-size: 15px; font-weight: 700; color: #0b1020; }
+.leaflet-popup-content .meta { font-size: 12px; color: #555; margin-top: 4px; }

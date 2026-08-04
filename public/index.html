@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Карта України — DeepState 2026</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="map"></div>
+
+  <aside id="sidebar">
+    <div class="brand">
+      <h1>Карта України</h1>
+      <p class="sub">DeepState-стиль · населення 2026</p>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="background:#d32f2f"></span> Окуповано РФ</div>
+      <div class="legend-item"><span class="dot" style="background:#f59e0b"></span> Зона бойових дій</div>
+      <div class="legend-item"><span class="dot" style="background:#388e3c"></span> Під контролем України</div>
+    </div>
+
+    <div id="info" class="info">
+      <p class="hint">Натисніть на область, район чи громаду, щоб побачити орієнтовне населення на 2026 рік.</p>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="note">
+      Населення — <b>оцінка</b> на 2026 рік (війна, біженці, мобілізація). Дані районів/громад
+      розподіляються пропорційно площі області. Джерело меж: ukrainian_geodata (АТУ 2020).
+    </div>
+  </aside>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "ukraine-deepstate-map",
+  "version": "1.0.0",
+  "description": "Інтерактивна карта України у стилі DeepState з населенням 2026",
+  "main": "server.js",
+  "type": "module",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "leaflet": "^1.9.4" }
+}
