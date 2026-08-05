@@ -9,7 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, User
 from telegram.constants import ChatAction, ChatType, ParseMode
 from telegram.ext import ContextTypes
 
-from . import storage, telegram_account as account
+from . import config, storage, telegram_account as account
 from .ai.engine import BusinessAI
 from .logo_generator import generate_logo
 from .posts_generator import generate_posts, write_brand_package
@@ -83,14 +83,19 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        "/connect — подключить Telegram-аккаунт\n"
-        "/new — новый запуск бизнеса\n"
-        "/createchannel — создать канал автоматически\n"
-        "/posts — посты\n"
-        "/status — статус\n"
-        "/logout — отключить аккаунт\n"
+    lines = [
+        "/connect — подключить Telegram-аккаунт",
+        "/new — новый запуск бизнеса",
+        "/createchannel — создать канал автоматически",
+        "/posts — посты",
+        "/status — статус",
+        "/logout — отключить аккаунт",
         "/cancel — отмена",
+    ]
+    if config.is_admin(update.effective_user.id):
+        lines.append("/setapi — ключи приложения (только владелец)")
+    await update.message.reply_text(
+        "\n".join(lines),
         reply_markup=main_keyboard(account.has_session(update.effective_user.id)),
     )
 
@@ -140,22 +145,75 @@ async def cmd_brand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # ---------- подключение аккаунта ----------
 
 
+async def _service_unavailable(update: Update, user: User) -> None:
+    """Ключи приложения не настроены — это забота владельца сервиса, не клиента."""
+    target = _target(update)
+    if config.is_admin(user.id):
+        await target.reply_text(
+            "<b>Сервис ещё не настроен</b> (это видишь только ты как админ)\n\n"
+            "Ключи приложения нужны один раз на весь сервис — дальше клиенты подключаются "
+            "только номером и кодом.\n\n"
+            "1. my.telegram.org → API development tools → создай приложение\n"
+            "2. Пришли мне командой:\n"
+            "<code>/setapi 1234567 0123456789abcdef0123456789abcdef</code>\n\n"
+            "Перезапуск не нужен, ключи подхватятся сразу.",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+    await target.reply_text(
+        "Автоматическое подключение аккаунта сейчас недоступно — уже разбираемся.\n\n"
+        "Пока могу собрать бренд, лого и посты, а канал создашь в пару касаний по инструкции.",
+        reply_markup=main_keyboard(False),
+    )
+
+
+async def cmd_setapi(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Владелец сервиса задаёт ключи приложения один раз."""
+    user = update.effective_user
+    if not config.is_admin(user.id):
+        await update.message.reply_text("Команда доступна только владельцу сервиса.")
+        return
+
+    parts = (update.message.text or "").split()
+    if len(parts) != 3 or not parts[1].isdigit():
+        await update.message.reply_text(
+            "Формат: <code>/setapi api_id api_hash</code>\n"
+            "Например: <code>/setapi 1234567 0123456789abcdef0123456789abcdef</code>",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    api_id, api_hash = int(parts[1]), parts[2]
+    await update.message.reply_text("Проверяю ключи…")
+    try:
+        ok = await account.validate_credentials(api_id, api_hash)
+    except Exception as exc:
+        log.exception("validate_credentials failed")
+        await update.message.reply_text(f"Не смог проверить ключи: {exc}")
+        return
+
+    if not ok:
+        await update.message.reply_text("Telegram отклонил эти ключи. Проверь api_id и api_hash.")
+        return
+
+    config.set_env({"TG_API_ID": str(api_id), "TG_API_HASH": api_hash})
+    if not config.admin_ids():
+        config.set_env({"ADMIN_USER_IDS": str(user.id)})
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+    await update.effective_chat.send_message(
+        "✅ Ключи приняты и сохранены. Сообщение с ключами удалено из чата.\n\n"
+        "Теперь любой пользователь подключает аккаунт номером и кодом — больше ничего не нужно.",
+        reply_markup=main_keyboard(False),
+    )
+
+
 async def _start_account_login(update: Update, user: User) -> None:
     target = _target(update)
     if not account.is_configured():
-        await target.reply_text(
-            "<b>Нужны API-ключи Telegram</b>\n\n"
-            "Чтобы я мог создавать канал и постить от твоего имени, нужен доступ MTProto:\n\n"
-            "1. Зайди на my.telegram.org\n"
-            "2. API development tools → создай приложение\n"
-            "3. Скопируй <code>api_id</code> и <code>api_hash</code>\n"
-            "4. Впиши в <code>business-bot/.env</code>:\n"
-            "<code>TG_API_ID=1234567\nTG_API_HASH=abcdef...</code>\n"
-            "5. Перезапусти бота и снова нажми «Подключить аккаунт»\n\n"
-            "Без этого я работаю в режиме помощника: готовлю бренд, лого и посты, "
-            "но канал придётся создать вручную.",
-            parse_mode=ParseMode.HTML,
-        )
+        await _service_unavailable(update, user)
         return
 
     if account.has_session(user.id):
@@ -177,10 +235,11 @@ async def _start_account_login(update: Update, user: User) -> None:
     storage.save_user(user.id, data)
     await target.reply_text(
         "<b>Подключение аккаунта</b>\n\n"
-        "Пришли номер телефона этого Telegram-аккаунта в формате <code>+380971234567</code>.\n\n"
-        "Я отправлю код подтверждения в Telegram. Сессия хранится локально на твоём сервере, "
-        "отключить можно командой /logout.",
+        "Пришли номер телефона в формате <code>+380971234567</code>.\n"
+        "Я отправлю код в Telegram, ты пришлёшь его мне — и всё готово.\n\n"
+        "Отключить в любой момент: /logout",
         parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Отмена", callback_data="cancel")]]),
     )
 
 
@@ -192,6 +251,9 @@ async def _handle_phone(update: Update, uid: int, text: str) -> None:
     try:
         started = await account.start_login(phone)
     except account.AccountError as exc:
+        if str(exc) == "SERVICE_NOT_CONFIGURED":
+            await _service_unavailable(update, update.effective_user)
+            return
         await update.message.reply_text(str(exc))
         return
     except Exception as exc:
@@ -205,10 +267,20 @@ async def _handle_phone(update: Update, uid: int, text: str) -> None:
     data["login_hash"] = started.phone_code_hash
     data["login_session"] = started.session_string
     storage.save_user(uid, data)
-    await update.message.reply_text(
-        "Код отправлен в Telegram. Пришли его сюда (например <code>12345</code>).\n"
-        "Если код пришёл в этот чат от Telegram — просто перепечатай цифры.",
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+    await update.effective_chat.send_message(
+        "Код отправлен в Telegram. Пришли его сюда цифрами, например <code>12345</code>.\n\n"
+        "Код приходит в чат от «Telegram» — можно просто перепечатать.",
         parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🔁 Прислать код заново", callback_data="resend_code")],
+                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")],
+            ]
+        ),
     )
 
 
@@ -226,6 +298,11 @@ async def _handle_code(update: Update, uid: int, text: str) -> None:
             session_string=data.get("login_session", ""),
         )
     except account.AccountError as exc:
+        if str(exc) == "EXPIRED":
+            data["stage"] = "await_phone"
+            storage.save_user(uid, data)
+            await update.message.reply_text("Код истёк. Пришли номер ещё раз — отправлю новый код.")
+            return
         await update.message.reply_text(str(exc))
         return
     except Exception as exc:
@@ -237,10 +314,40 @@ async def _handle_code(update: Update, uid: int, text: str) -> None:
         data["stage"] = "await_password"
         data["login_session"] = session_string
         storage.save_user(uid, data)
-        await update.message.reply_text("У аккаунта включена двухфакторная защита. Пришли пароль (облачный пароль).")
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
+        await update.effective_chat.send_message(
+            "На аккаунте включён облачный пароль (2FA). Пришли его — сообщение сразу удалю."
+        )
         return
 
     await _finish_login(update, uid, session_string, name)
+
+
+async def _resend_code(update: Update, uid: int) -> None:
+    data = storage.load_user(uid)
+    if data.get("stage") != "await_code" or not data.get("login_phone"):
+        await _target(update).reply_text("Начни подключение заново: /connect")
+        return
+    try:
+        started = await account.resend_code(
+            phone=data["login_phone"],
+            phone_code_hash=data.get("login_hash", ""),
+            session_string=data.get("login_session", ""),
+        )
+    except account.AccountError as exc:
+        await _target(update).reply_text(str(exc))
+        return
+    except Exception as exc:
+        log.exception("resend failed")
+        await _target(update).reply_text(f"Не получилось переотправить код: {exc}")
+        return
+    data["login_hash"] = started.phone_code_hash
+    data["login_session"] = started.session_string
+    storage.save_user(uid, data)
+    await _target(update).reply_text("Код отправлен заново. Пришли цифры.")
 
 
 async def _handle_password(update: Update, uid: int, text: str) -> None:
@@ -277,8 +384,9 @@ async def _finish_login(update: Update, uid: int, session_string: str, name: str
     except Exception:
         pass
     await update.effective_chat.send_message(
-        f"✅ Аккаунт подключён: <b>{name or 'готово'}</b>\n\n"
-        "Теперь расскажи идею: что продаёшь и кому? Одним предложением.",
+        f"✅ Аккаунт подключён: <b>{name or 'готово'}</b>\n"
+        "Канал я создам сам, когда будет готов бренд.\n\n"
+        "Расскажи идею: что продаёшь и кому? Одним предложением.",
         parse_mode=ParseMode.HTML,
     )
 
@@ -359,6 +467,9 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     if data == "connect_account":
         await _start_account_login(update, user)
+        return
+    if data == "resend_code":
+        await _resend_code(update, uid)
         return
     if data == "start_flow":
         await _begin_flow(update, user)
@@ -634,7 +745,6 @@ async def _send_status(update: Update) -> None:
     text = (
         "<b>Статус</b>\n"
         f"Аккаунт: {'✅ ' + str(data.get('account_name') or 'подключён') if connected else '❌ не подключён'}\n"
-        f"MTProto ключи: {'есть' if account.is_configured() else 'нет (TG_API_ID/TG_API_HASH)'}\n"
         f"Этап: {data.get('stage')}\n"
         f"Ниша: {profile.get('domain_ru') or profile.get('domain') or '—'}\n"
         f"Идея: {(profile.get('idea') or '—')[:100]}\n"

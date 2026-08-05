@@ -32,6 +32,7 @@ from bot.handlers import (  # noqa: E402
     cmd_logout,
     cmd_new,
     cmd_posts,
+    cmd_setapi,
     cmd_start,
     cmd_status,
     on_callback,
@@ -72,6 +73,7 @@ def main() -> None:
     app.add_handler(CommandHandler("brand", cmd_brand))
     app.add_handler(CommandHandler("posts", cmd_posts))
     app.add_handler(CommandHandler("createchannel", cmd_create_channel))
+    app.add_handler(CommandHandler("setapi", cmd_setapi))
     app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, on_message))
     app.add_error_handler(on_error)

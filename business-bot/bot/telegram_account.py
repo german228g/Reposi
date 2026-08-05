@@ -18,8 +18,13 @@ from pathlib import Path
 
 from telethon import TelegramClient, functions, types
 from telethon.errors import (
+    ApiIdInvalidError,
+    FloodWaitError,
+    PasswordHashInvalidError,
+    PhoneCodeEmptyError,
     PhoneCodeExpiredError,
     PhoneCodeInvalidError,
+    PhoneNumberBannedError,
     PhoneNumberInvalidError,
     SessionPasswordNeededError,
 )
@@ -84,12 +89,33 @@ def drop_session(user_id: int) -> None:
 def _client(session_string: str | None = None) -> TelegramClient:
     creds = credentials()
     if creds is None:
-        raise AccountError(
-            "Не настроены TG_API_ID / TG_API_HASH.\n"
-            "Возьми их на my.telegram.org → API development tools и добавь в .env"
-        )
+        raise AccountError("SERVICE_NOT_CONFIGURED")
     api_id, api_hash = creds
-    return TelegramClient(StringSession(session_string or None), api_id, api_hash)
+    return TelegramClient(
+        StringSession(session_string or None),
+        api_id,
+        api_hash,
+        device_model="Business Launch AI",
+        system_version="1.0",
+        app_version="1.0",
+    )
+
+
+async def validate_credentials(api_id: int, api_hash: str) -> bool:
+    """Проверяет, что ключи приложения рабочие (без входа в аккаунт)."""
+    client = TelegramClient(StringSession(), api_id, api_hash)
+    try:
+        await client.connect()
+        # Любой безобидный запрос к API: неверные ключи отдадут ApiIdInvalidError
+        await client(functions.help.GetNearestDcRequest())
+        return True
+    except ApiIdInvalidError:
+        return False
+    finally:
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
 
 
 async def start_login(phone: str) -> LoginStarted:
@@ -99,11 +125,44 @@ async def start_login(phone: str) -> LoginStarted:
     try:
         sent = await client.send_code_request(phone)
     except PhoneNumberInvalidError as exc:
-        raise AccountError("Номер выглядит неверным. Формат: +380971234567") from exc
+        raise AccountError("Такого номера не существует. Формат: +380971234567") from exc
+    except PhoneNumberBannedError as exc:
+        raise AccountError("Этот номер заблокирован в Telegram.") from exc
+    except FloodWaitError as exc:
+        raise AccountError(
+            f"Telegram просит подождать {_human_wait(exc.seconds)} перед следующей попыткой."
+        ) from exc
+    except ApiIdInvalidError as exc:
+        raise AccountError("SERVICE_NOT_CONFIGURED") from exc
     finally:
         session_string = client.session.save()
         await client.disconnect()
     return LoginStarted(phone_code_hash=sent.phone_code_hash, session_string=session_string)
+
+
+def _human_wait(seconds: int) -> str:
+    if seconds < 60:
+        return f"{seconds} сек"
+    if seconds < 3600:
+        return f"{seconds // 60} мин"
+    return f"{seconds // 3600} ч"
+
+
+async def resend_code(phone: str, phone_code_hash: str, session_string: str) -> LoginStarted:
+    """Просит Telegram прислать код заново (например, звонком/SMS)."""
+    client = _client(session_string)
+    await client.connect()
+    try:
+        sent = await client(
+            functions.auth.ResendCodeRequest(phone_number=phone, phone_code_hash=phone_code_hash)
+        )
+        return LoginStarted(
+            phone_code_hash=sent.phone_code_hash, session_string=client.session.save()
+        )
+    except FloodWaitError as exc:
+        raise AccountError(f"Подожди {_human_wait(exc.seconds)} — Telegram ограничил попытки.") from exc
+    finally:
+        await client.disconnect()
 
 
 async def complete_login(
@@ -124,10 +183,14 @@ async def complete_login(
                 await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
         except SessionPasswordNeededError:
             return client.session.save(), "", True
-        except PhoneCodeInvalidError as exc:
-            raise AccountError("Код неверный. Пришли код ещё раз.") from exc
+        except (PhoneCodeInvalidError, PhoneCodeEmptyError) as exc:
+            raise AccountError("Код неверный. Проверь цифры и пришли снова.") from exc
         except PhoneCodeExpiredError as exc:
-            raise AccountError("Код истёк. Начни подключение заново: /connect") from exc
+            raise AccountError("EXPIRED") from exc
+        except PasswordHashInvalidError as exc:
+            raise AccountError("Пароль не подошёл. Попробуй ещё раз.") from exc
+        except FloodWaitError as exc:
+            raise AccountError(f"Слишком много попыток. Подожди {_human_wait(exc.seconds)}.") from exc
         me = await client.get_me()
         title = me.username and f"@{me.username}" or (me.first_name or "аккаунт")
         return client.session.save(), title, False
