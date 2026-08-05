@@ -323,44 +323,108 @@ def test_qr_png_is_valid_image():
     assert image.width >= 200 and image.width == image.height
 
 
-def test_qr_login_shows_code_and_waits(tmp_path, monkeypatch):
-    """Подключение показывает QR и не просит вводить код цифрами."""
+def test_connect_asks_for_phone_not_qr(tmp_path, monkeypatch):
+    """Основной вход — по номеру с одного телефона, QR только запасной кнопкой."""
     import bot.handlers as handlers
     import bot.storage as storage
-    import bot.telegram_account as account
 
     monkeypatch.setattr(storage, "USERS", tmp_path / "users")
     monkeypatch.setenv("TG_API_ID", "1234567")
     monkeypatch.setenv("TG_API_HASH", "abcdef")
 
-    async def fake_start_qr(user_id):
-        return account.qr_png("tg://login?token=TEST")
-
-    monkeypatch.setattr(account, "start_qr_login", fake_start_qr)
-    monkeypatch.setattr(handlers.asyncio, "create_task", lambda coro: coro.close())
-
     rec = _Recorder(user_id=4242)
-    asyncio.run(handlers._start_qr_login(rec, rec.effective_user))
-
-    assert rec.photos, "QR-код не отправлен"
-    caption = rec.photos[0]
-    assert "Устройства" in caption and "QR" in caption
-    assert "цифр" not in caption.split("Ввод кода")[0].lower()
-    assert storage.load_user(4242)["stage"] == "await_qr"
+    asyncio.run(handlers._start_account_login(rec, rec.effective_user))
+    assert storage.load_user(4242)["stage"] == "await_phone"
+    assert "номер" in rec.joined.lower()
+    assert "одного телефона" in rec.joined.lower() or "QR не нужен" in rec.joined
 
 
-def test_typed_code_is_rejected_with_explanation(tmp_path, monkeypatch):
-    """Если человек всё же прислал цифры — объясняем, а не пытаемся войти."""
+def test_bare_code_rejected_before_signin(tmp_path, monkeypatch):
+    """Сплошной код даже не отправляем в Telegram — просим формат через тире."""
     import bot.handlers as handlers
     import bot.storage as storage
+    import bot.telegram_account as account
 
     monkeypatch.setattr(storage, "USERS", tmp_path / "users")
-    storage.save_user(4242, {"user_id": 4242, "stage": "await_qr", "profile": {}})
+    storage.save_user(
+        4242,
+        {
+            "user_id": 4242,
+            "stage": "await_code",
+            "login_phone": "+380971234567",
+            "login_hash": "H",
+            "login_session": "S",
+            "profile": {},
+        },
+    )
 
+    called = {"n": 0}
+
+    async def boom(**kwargs):
+        called["n"] += 1
+        raise AssertionError("complete_login не должен вызываться для сплошного кода")
+
+    monkeypatch.setattr(account, "complete_login", boom)
     rec = _Recorder(text="29218", user_id=4242)
-    asyncio.run(handlers.on_message(rec, SimpleNamespace(bot=SimpleNamespace())))
-    assert "аннулирует" in rec.joined
-    assert storage.load_user(4242)["stage"] == "await_qr"
+    asyncio.run(handlers._handle_code(rec, 4242, "29218"))
+    assert called["n"] == 0
+    assert "тире" in rec.joined.lower()
+    assert "2-9-2-1-8" in rec.joined
+
+
+def test_dashed_code_completes_login(tmp_path, monkeypatch):
+    import bot.handlers as handlers
+    import bot.storage as storage
+    import bot.telegram_account as account
+
+    monkeypatch.setattr(storage, "USERS", tmp_path / "users")
+    monkeypatch.setattr(account, "SESSIONS", tmp_path / "sessions")
+    storage.save_user(
+        4242,
+        {
+            "user_id": 4242,
+            "stage": "await_code",
+            "login_phone": "+380971234567",
+            "login_hash": "H",
+            "login_session": "S",
+            "profile": {},
+        },
+    )
+
+    async def fake_complete(**kwargs):
+        assert kwargs["code"] == "29218"
+        return "SESSION_OK", "@client", False
+
+    monkeypatch.setattr(account, "complete_login", fake_complete)
+    rec = _Recorder(text="2-9-2-1-8", user_id=4242)
+    asyncio.run(handlers._handle_code(rec, 4242, "2-9-2-1-8"))
+    assert account.load_session(4242) == "SESSION_OK"
+    assert storage.load_user(4242)["stage"] == "questionnaire"
+    assert "подключён" in rec.joined.lower()
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("2-9-2-1-8", "29218"),
+        ("2 9 2 1 8", "29218"),
+        ("a29218", "29218"),
+        ("29218x", "29218"),
+        ("код: 2.9.2.1.8", "29218"),
+    ],
+)
+def test_parse_login_code_formats(raw, expected):
+    import bot.telegram_account as account
+
+    assert account.parse_login_code(raw) == expected
+
+
+def test_parse_bare_code_raises():
+    import bot.telegram_account as account
+    import pytest as _pytest
+
+    with _pytest.raises(account.AccountError, match="BARE_CODE"):
+        account.parse_login_code("29218")
 
 
 def test_qr_wait_refresh_and_success(monkeypatch, tmp_path):

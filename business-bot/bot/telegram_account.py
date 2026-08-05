@@ -1,14 +1,11 @@
 """Реальное подключение Telegram-аккаунта через MTProto (Telethon).
 
-Вход только по QR-коду: Telegram аннулирует коды подтверждения, отправленные
-внутри переписки, поэтому ввод кода цифрами в чат бота работать не может.
-QR — официальный способ привязки устройства (Настройки → Устройства).
+Вход с одного телефона: номер → код.
+Telegram аннулирует код, если его прислали в чат «как есть» (29218) —
+это антифишинг. Поэтому код принимаем только в «разбитом» виде: 2-9-2-1-8.
+Дополнительно просим SMS вместо кода в приложении — так ещё надёжнее.
 
-После подключения бот может от имени аккаунта:
-- создать канал
-- поставить аватарку и описание
-- опубликовать посты
-- добавить себя (бота) администратором канала
+QR остаётся запасным вариантом для тех, у кого есть второй экран.
 
 Ключи приложения (TG_API_ID / TG_API_HASH) задаются один раз владельцем сервиса.
 """
@@ -19,13 +16,20 @@ import asyncio
 import io
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from telethon import TelegramClient, functions, types
 from telethon.errors import (
     ApiIdInvalidError,
+    FloodWaitError,
     PasswordHashInvalidError,
+    PhoneCodeEmptyError,
+    PhoneCodeExpiredError,
+    PhoneCodeInvalidError,
+    PhoneNumberBannedError,
+    PhoneNumberInvalidError,
     SessionPasswordNeededError,
 )
 from telethon.sessions import StringSession
@@ -38,6 +42,136 @@ SESSIONS = ROOT / "data" / "sessions"
 
 class AccountError(Exception):
     """Ошибка, текст которой можно показать пользователю."""
+
+
+@dataclass
+class LoginStarted:
+    phone_code_hash: str
+    session_string: str
+    via: str = "app"  # app | sms
+
+
+def parse_login_code(text: str) -> str | None:
+    """Достаёт код из «безопасного» формата.
+
+    Принимаем только разбитый код — иначе Telegram блокирует вход:
+      ✓ 2-9-2-1-8   2 9 2 1 8   2.9.2.1.8   a29218   29218x
+      ✗ 29218  (сплошняком — детект антифишинга)
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", raw)
+    if len(digits) < 5 or len(digits) > 6:
+        return None
+    # сплошные 5–6 цифр без разделителей/букв — отказываем заранее
+    if re.fullmatch(r"\d{5,6}", raw):
+        raise AccountError("BARE_CODE")
+    # есть разделители или буквы вокруг — ок
+    if re.search(r"[\s\-–—\.·,/|_]", raw) or re.search(r"[A-Za-zА-Яа-яЁё]", raw):
+        return digits
+    raise AccountError("BARE_CODE")
+
+
+def format_code_hint(code: str = "29218") -> str:
+    return "-".join(code)
+
+
+def _human_wait(seconds: int) -> str:
+    if seconds < 60:
+        return f"{seconds} сек"
+    if seconds < 3600:
+        return f"{seconds // 60} мин"
+    return f"{seconds // 3600} ч"
+
+
+async def start_login(phone: str) -> LoginStarted:
+    """Отправляет код и сразу пытается переключить доставку на SMS."""
+    client = _client()
+    await client.connect()
+    via = "app"
+    try:
+        sent = await client.send_code_request(phone)
+        phone_code_hash = sent.phone_code_hash
+        # Повторная отправка часто уходит SMS — код из SMS можно вводить проще
+        try:
+            resent = await client(
+                functions.auth.ResendCodeRequest(
+                    phone_number=phone, phone_code_hash=phone_code_hash
+                )
+            )
+            phone_code_hash = resent.phone_code_hash
+            via = "sms"
+        except Exception:
+            log.info("SMS resend недоступен, остаёмся на коде в приложении")
+            via = "app"
+    except PhoneNumberInvalidError as exc:
+        raise AccountError("Такого номера не существует. Формат: +380971234567") from exc
+    except PhoneNumberBannedError as exc:
+        raise AccountError("Этот номер заблокирован в Telegram.") from exc
+    except FloodWaitError as exc:
+        raise AccountError(
+            f"Telegram просит подождать {_human_wait(exc.seconds)} перед следующей попыткой."
+        ) from exc
+    except ApiIdInvalidError as exc:
+        raise AccountError("SERVICE_NOT_CONFIGURED") from exc
+    finally:
+        session_string = client.session.save()
+        await client.disconnect()
+    return LoginStarted(phone_code_hash=phone_code_hash, session_string=session_string, via=via)
+
+
+async def resend_code(phone: str, phone_code_hash: str, session_string: str) -> LoginStarted:
+    client = _client(session_string)
+    await client.connect()
+    try:
+        sent = await client(
+            functions.auth.ResendCodeRequest(
+                phone_number=phone, phone_code_hash=phone_code_hash
+            )
+        )
+        return LoginStarted(
+            phone_code_hash=sent.phone_code_hash,
+            session_string=client.session.save(),
+            via="sms",
+        )
+    except FloodWaitError as exc:
+        raise AccountError(f"Подожди {_human_wait(exc.seconds)} — Telegram ограничил попытки.") from exc
+    finally:
+        await client.disconnect()
+
+
+async def complete_login(
+    phone: str,
+    code: str,
+    phone_code_hash: str,
+    session_string: str,
+    password: str | None = None,
+) -> tuple[str, str, bool]:
+    """Возвращает (session_string, имя, нужен_ли_пароль)."""
+    client = _client(session_string)
+    await client.connect()
+    try:
+        try:
+            if password:
+                await client.sign_in(password=password)
+            else:
+                await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        except SessionPasswordNeededError:
+            return client.session.save(), "", True
+        except (PhoneCodeInvalidError, PhoneCodeEmptyError) as exc:
+            # Telegram часто маскирует антифишинг-блок под «неверный/истёкший» код
+            raise AccountError("CODE_REJECTED") from exc
+        except PhoneCodeExpiredError as exc:
+            raise AccountError("EXPIRED") from exc
+        except PasswordHashInvalidError as exc:
+            raise AccountError("Пароль не подошёл. Попробуй ещё раз.") from exc
+        except FloodWaitError as exc:
+            raise AccountError(f"Слишком много попыток. Подожди {_human_wait(exc.seconds)}.") from exc
+        me = await client.get_me()
+        return client.session.save(), _title_of(me), False
+    finally:
+        await client.disconnect()
 
 
 @dataclass

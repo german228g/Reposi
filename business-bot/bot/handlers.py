@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from pathlib import Path
 
 from telegram import (
@@ -237,16 +238,37 @@ async def _start_account_login(update: Update, user: User) -> None:
             return
         account.drop_session(user.id)
 
-    await _start_qr_login(update, user)
+    data = storage.load_user(user.id)
+    data["stage"] = "await_phone"
+    storage.save_user(user.id, data)
+    await target.reply_text(
+        "<b>Подключение аккаунта</b>\n\n"
+        "Пришли номер в формате <code>+380971234567</code>.\n"
+        "Хватит одного телефона — QR не нужен.\n\n"
+        "Отключить в любой момент: /logout",
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("📷 Войти по QR (если есть второй экран)", callback_data="login_qr")],
+                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")],
+            ]
+        ),
+    )
 
 
 QR_INSTRUCTIONS = (
-    "<b>Подключение аккаунта</b>\n\n"
-    "Открой на телефоне: <b>Настройки → Устройства → Подключить устройство</b>\n"
-    "и наведи камеру на этот QR-код.\n\n"
-    "Код обновляется автоматически. Если включён облачный пароль — попрошу его после сканирования.\n\n"
-    "Ввод кода цифрами Telegram запрещает: код, отправленный в переписку, "
-    "он сразу аннулирует. Поэтому вход только по QR."
+    "<b>Вход по QR</b>\n\n"
+    "На телефоне: <b>Настройки → Устройства → Подключить устройство</b>\n"
+    "и наведи камеру на этот код. Он обновляется сам.\n\n"
+    "Удобнее с компьютера или второго экрана. На одном телефоне проще войти по номеру."
+)
+
+
+CODE_HINT = (
+    "Пришли код <b>через тире</b>, например: <code>2-9-2-1-8</code>\n\n"
+    "Важно: если написать сплошняком <code>29218</code>, Telegram сам блокирует вход "
+    "(антифишинг). Тире обходит это — код тот же, а блокировки нет.\n\n"
+    "Сообщение с кодом сразу удалю."
 )
 
 
@@ -343,6 +365,167 @@ async def _watch_qr_login(uid: int, chat_id: int, message_id: int, bot) -> None:
         )
     except Exception:
         pass
+
+
+async def _handle_phone(update: Update, uid: int, text: str) -> None:
+    phone = text.replace(" ", "").replace("-", "")
+    if not phone.startswith("+") or not phone[1:].isdigit() or len(phone) < 10:
+        await update.message.reply_text("Формат номера: <code>+380971234567</code>", parse_mode=ParseMode.HTML)
+        return
+    await update.message.reply_text("Отправляю код…")
+    try:
+        started = await account.start_login(phone)
+    except account.AccountError as exc:
+        if str(exc) == "SERVICE_NOT_CONFIGURED":
+            await _service_unavailable(update, update.effective_user)
+            return
+        await update.message.reply_text(str(exc))
+        return
+    except Exception as exc:
+        log.exception("send_code failed")
+        await update.message.reply_text(f"Не смог отправить код: {exc}")
+        return
+
+    data = storage.load_user(uid)
+    data["stage"] = "await_code"
+    data["login_phone"] = phone
+    data["login_hash"] = started.phone_code_hash
+    data["login_session"] = started.session_string
+    data["login_via"] = started.via
+    storage.save_user(uid, data)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+
+    where = (
+        "Код ушёл <b>по SMS</b> — открой сообщения телефона."
+        if started.via == "sms"
+        else "Код пришёл в чат «Telegram» (служебные уведомления)."
+    )
+    await update.effective_chat.send_message(
+        f"{where}\n\n{CODE_HINT}",
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("📲 Прислать код по SMS ещё раз", callback_data="resend_code")],
+                [InlineKeyboardButton("📷 QR вместо кода", callback_data="login_qr")],
+                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")],
+            ]
+        ),
+    )
+
+
+async def _handle_code(update: Update, uid: int, text: str) -> None:
+    try:
+        code = account.parse_login_code(text)
+    except account.AccountError as exc:
+        if str(exc) == "BARE_CODE":
+            digits = re.sub(r"\D", "", text)
+            dashed = account.format_code_hint(digits if len(digits) >= 5 else "29218")
+            try:
+                await update.message.delete()
+            except Exception:
+                pass
+            await update.effective_chat.send_message(
+                "Так Telegram заблокирует вход.\n\n"
+                f"Пришли <b>через тире</b>: <code>{dashed}</code>",
+                parse_mode=ParseMode.HTML,
+            )
+            return
+        await update.message.reply_text(str(exc))
+        return
+
+    if not code:
+        await update.message.reply_text(
+            "Не вижу код. Пример: <code>2-9-2-1-8</code>",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    data = storage.load_user(uid)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+
+    try:
+        session_string, name, need_password = await account.complete_login(
+            phone=data.get("login_phone", ""),
+            code=code,
+            phone_code_hash=data.get("login_hash", ""),
+            session_string=data.get("login_session", ""),
+        )
+    except account.AccountError as exc:
+        err = str(exc)
+        if err == "EXPIRED":
+            data["stage"] = "await_phone"
+            storage.save_user(uid, data)
+            await update.effective_chat.send_message(
+                "Код больше не действует. Пришли номер ещё раз — вышлю новый."
+            )
+            return
+        if err == "CODE_REJECTED":
+            await update.effective_chat.send_message(
+                "Telegram не принял код.\n\n"
+                "• Если писал сплошняком — пришли через тире: <code>2-9-2-1-8</code>\n"
+                "• Или нажми «Прислать код по SMS» и введи SMS-код так же через тире\n"
+                "• Либо войди по QR со второго экрана",
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [InlineKeyboardButton("📲 Код по SMS", callback_data="resend_code")],
+                        [InlineKeyboardButton("📷 QR", callback_data="login_qr")],
+                    ]
+                ),
+            )
+            return
+        await update.effective_chat.send_message(err)
+        return
+    except Exception as exc:
+        log.exception("sign_in failed")
+        await update.effective_chat.send_message(f"Ошибка входа: {exc}")
+        return
+
+    if need_password:
+        data["stage"] = "await_password"
+        data["login_session"] = session_string
+        storage.save_user(uid, data)
+        await update.effective_chat.send_message(
+            "На аккаунте включён облачный пароль (2FA). Пришли его — сообщение сразу удалю."
+        )
+        return
+
+    account.save_session(uid, session_string)
+    await _after_login(update, uid, name)
+
+
+async def _resend_code(update: Update, uid: int) -> None:
+    data = storage.load_user(uid)
+    if data.get("stage") != "await_code" or not data.get("login_phone"):
+        await _target(update).reply_text("Начни подключение заново: /connect")
+        return
+    try:
+        started = await account.resend_code(
+            phone=data["login_phone"],
+            phone_code_hash=data.get("login_hash", ""),
+            session_string=data.get("login_session", ""),
+        )
+    except account.AccountError as exc:
+        await _target(update).reply_text(str(exc))
+        return
+    except Exception as exc:
+        log.exception("resend failed")
+        await _target(update).reply_text(f"Не получилось переотправить: {exc}")
+        return
+    data["login_hash"] = started.phone_code_hash
+    data["login_session"] = started.session_string
+    data["login_via"] = "sms"
+    storage.save_user(uid, data)
+    await _target(update).reply_text(
+        f"Код отправлен по SMS.\n\n{CODE_HINT}",
+        parse_mode=ParseMode.HTML,
+    )
 
 
 async def _handle_password(update: Update, uid: int, text: str) -> None:
@@ -478,6 +661,12 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if data == "connect_account":
         await _start_account_login(update, user)
         return
+    if data == "login_qr":
+        await _start_qr_login(update, user)
+        return
+    if data == "resend_code":
+        await _resend_code(update, uid)
+        return
     if data == "cancel_qr":
         await account.cancel_qr_login(uid)
         user_data = storage.load_user(uid)
@@ -485,6 +674,15 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         user_data.pop("qr_message_id", None)
         storage.save_user(uid, user_data)
         await query.message.reply_text("Подключение отменено.", reply_markup=main_keyboard(False))
+        return
+    if data == "cancel":
+        await account.cancel_qr_login(uid)
+        user_data = storage.load_user(uid)
+        user_data["stage"] = "idle"
+        for key in ("login_phone", "login_hash", "login_session", "login_via", "qr_message_id"):
+            user_data.pop(key, None)
+        storage.save_user(uid, user_data)
+        await query.message.reply_text("Отменено.", reply_markup=main_keyboard(account.has_session(uid)))
         return
     if data == "start_flow":
         await _begin_flow(update, user)
@@ -513,12 +711,6 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
     if data == "status":
         await _send_status(update)
-        return
-    if data == "cancel":
-        user_data = storage.load_user(uid)
-        user_data["stage"] = "idle"
-        storage.save_user(uid, user_data)
-        await query.message.reply_text("Отменено.", reply_markup=main_keyboard(account.has_session(uid)))
         return
     if data.startswith("pick_name:"):
         name = data.split(":", 1)[1]
@@ -561,11 +753,16 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     stage = data.get("stage", "idle")
 
+    if stage == "await_phone":
+        await _handle_phone(update, uid, text)
+        return
+    if stage == "await_code":
+        await _handle_code(update, uid, text)
+        return
     if stage == "await_qr":
         await message.reply_text(
-            "Жду сканирование QR-кода выше.\n"
-            "Настройки → Устройства → Подключить устройство.\n\n"
-            "Код цифрами присылать не нужно — Telegram аннулирует коды из переписки."
+            "Жду сканирование QR выше.\n"
+            "Или /connect — войти номером с одного телефона."
         )
         return
     if stage == "await_password":
