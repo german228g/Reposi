@@ -1,1 +1,8 @@
+business-bot/data/brands/
+business-bot/data/users/
+business-bot/.env
+business-bot/.venv/
 dist/
+*.pyc
+__pycache__/
+.venv/
