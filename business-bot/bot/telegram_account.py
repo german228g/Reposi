@@ -1,31 +1,31 @@
 """Реальное подключение Telegram-аккаунта через MTProto (Telethon).
 
-Бот входит в аккаунт пользователя по номеру и коду, после чего может:
+Вход только по QR-коду: Telegram аннулирует коды подтверждения, отправленные
+внутри переписки, поэтому ввод кода цифрами в чат бота работать не может.
+QR — официальный способ привязки устройства (Настройки → Устройства).
+
+После подключения бот может от имени аккаунта:
 - создать канал
 - поставить аватарку и описание
 - опубликовать посты
 - добавить себя (бота) администратором канала
 
-Требуются TG_API_ID и TG_API_HASH с https://my.telegram.org (раздел API development tools).
+Ключи приложения (TG_API_ID / TG_API_HASH) задаются один раз владельцем сервиса.
 """
 
 from __future__ import annotations
 
+import asyncio
+import io
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from telethon import TelegramClient, functions, types
 from telethon.errors import (
     ApiIdInvalidError,
-    FloodWaitError,
     PasswordHashInvalidError,
-    PhoneCodeEmptyError,
-    PhoneCodeExpiredError,
-    PhoneCodeInvalidError,
-    PhoneNumberBannedError,
-    PhoneNumberInvalidError,
     SessionPasswordNeededError,
 )
 from telethon.sessions import StringSession
@@ -41,9 +41,123 @@ class AccountError(Exception):
 
 
 @dataclass
-class LoginStarted:
-    phone_code_hash: str
-    session_string: str
+class QrSession:
+    """Живая MTProto-сессия на время ожидания сканирования QR."""
+
+    client: object
+    qr: object
+    account_title: str = ""
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+
+# QR-логины держим в памяти: клиент должен оставаться подключённым до сканирования
+_QR: dict[int, QrSession] = {}
+
+
+def qr_png(url: str, size: int = 8) -> bytes:
+    """Рисует QR-код из ссылки tg://login."""
+    import qrcode
+
+    qr = qrcode.QRCode(border=2, box_size=size, error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(url)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="#0D1B2A", back_color="white").convert("RGB")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+async def start_qr_login(user_id: int) -> bytes:
+    """Создаёт QR для входа и возвращает картинку."""
+    await cancel_qr_login(user_id)
+    client = _client()
+    await client.connect()
+    try:
+        qr = await client.qr_login()
+    except ApiIdInvalidError as exc:
+        await client.disconnect()
+        raise AccountError("SERVICE_NOT_CONFIGURED") from exc
+    except Exception:
+        await client.disconnect()
+        raise
+    _QR[user_id] = QrSession(client=client, qr=qr)
+    return qr_png(qr.url)
+
+
+async def wait_qr_login(user_id: int, timeout: float = 25.0) -> tuple[str, bytes | None]:
+    """Ждёт сканирование.
+
+    Возвращает статус и, для «refresh», новую картинку QR:
+    - ("ok", None)        — вход выполнен, сессия сохранена
+    - ("password", None)  — нужен облачный пароль (2FA)
+    - ("refresh", png)    — QR устарел, показать новый
+    - ("gone", None)      — сессии больше нет (отмена/перезапуск)
+    """
+    session = _QR.get(user_id)
+    if session is None:
+        return "gone", None
+
+    async with session.lock:
+        try:
+            user = await session.qr.wait(timeout=timeout)
+        except asyncio.TimeoutError:
+            try:
+                await session.qr.recreate()
+            except Exception:
+                log.warning("qr recreate failed", exc_info=True)
+                await cancel_qr_login(user_id)
+                return "gone", None
+            return "refresh", qr_png(session.qr.url)
+        except SessionPasswordNeededError:
+            return "password", None
+        except Exception:
+            log.exception("qr wait failed")
+            await cancel_qr_login(user_id)
+            return "gone", None
+
+    title = _title_of(user)
+    save_session(user_id, session.client.session.save())
+    session.account_title = title
+    await cancel_qr_login(user_id, keep_title=True)
+    return "ok", None
+
+
+async def finish_qr_with_password(user_id: int, password: str) -> str:
+    """Завершает QR-вход, если на аккаунте включён облачный пароль."""
+    session = _QR.get(user_id)
+    if session is None:
+        raise AccountError("Сессия входа истекла. Начни заново: /connect")
+    try:
+        user = await session.client.sign_in(password=password)
+    except PasswordHashInvalidError as exc:
+        raise AccountError("Пароль не подошёл. Пришли ещё раз.") from exc
+    title = _title_of(user)
+    save_session(user_id, session.client.session.save())
+    await cancel_qr_login(user_id, keep_title=True)
+    return title
+
+
+async def cancel_qr_login(user_id: int, keep_title: bool = False) -> None:
+    session = _QR.pop(user_id, None)
+    if session is None:
+        return
+    try:
+        await session.client.disconnect()
+    except Exception:
+        log.debug("qr client disconnect failed", exc_info=True)
+
+
+def qr_login_active(user_id: int) -> bool:
+    return user_id in _QR
+
+
+def _title_of(user) -> str:
+    if user is None:
+        return "аккаунт"
+    username = getattr(user, "username", None)
+    if username:
+        return f"@{username}"
+    return getattr(user, "first_name", None) or "аккаунт"
 
 
 def credentials() -> tuple[int, str] | None:
@@ -116,86 +230,6 @@ async def validate_credentials(api_id: int, api_hash: str) -> bool:
             await client.disconnect()
         except Exception:
             pass
-
-
-async def start_login(phone: str) -> LoginStarted:
-    """Отправляет код подтверждения на номер."""
-    client = _client()
-    await client.connect()
-    try:
-        sent = await client.send_code_request(phone)
-    except PhoneNumberInvalidError as exc:
-        raise AccountError("Такого номера не существует. Формат: +380971234567") from exc
-    except PhoneNumberBannedError as exc:
-        raise AccountError("Этот номер заблокирован в Telegram.") from exc
-    except FloodWaitError as exc:
-        raise AccountError(
-            f"Telegram просит подождать {_human_wait(exc.seconds)} перед следующей попыткой."
-        ) from exc
-    except ApiIdInvalidError as exc:
-        raise AccountError("SERVICE_NOT_CONFIGURED") from exc
-    finally:
-        session_string = client.session.save()
-        await client.disconnect()
-    return LoginStarted(phone_code_hash=sent.phone_code_hash, session_string=session_string)
-
-
-def _human_wait(seconds: int) -> str:
-    if seconds < 60:
-        return f"{seconds} сек"
-    if seconds < 3600:
-        return f"{seconds // 60} мин"
-    return f"{seconds // 3600} ч"
-
-
-async def resend_code(phone: str, phone_code_hash: str, session_string: str) -> LoginStarted:
-    """Просит Telegram прислать код заново (например, звонком/SMS)."""
-    client = _client(session_string)
-    await client.connect()
-    try:
-        sent = await client(
-            functions.auth.ResendCodeRequest(phone_number=phone, phone_code_hash=phone_code_hash)
-        )
-        return LoginStarted(
-            phone_code_hash=sent.phone_code_hash, session_string=client.session.save()
-        )
-    except FloodWaitError as exc:
-        raise AccountError(f"Подожди {_human_wait(exc.seconds)} — Telegram ограничил попытки.") from exc
-    finally:
-        await client.disconnect()
-
-
-async def complete_login(
-    phone: str,
-    code: str,
-    phone_code_hash: str,
-    session_string: str,
-    password: str | None = None,
-) -> tuple[str, str, bool]:
-    """Завершает вход. Возвращает (session_string, имя аккаунта, нужен_ли_пароль)."""
-    client = _client(session_string)
-    await client.connect()
-    try:
-        try:
-            if password:
-                await client.sign_in(password=password)
-            else:
-                await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
-        except SessionPasswordNeededError:
-            return client.session.save(), "", True
-        except (PhoneCodeInvalidError, PhoneCodeEmptyError) as exc:
-            raise AccountError("Код неверный. Проверь цифры и пришли снова.") from exc
-        except PhoneCodeExpiredError as exc:
-            raise AccountError("EXPIRED") from exc
-        except PasswordHashInvalidError as exc:
-            raise AccountError("Пароль не подошёл. Попробуй ещё раз.") from exc
-        except FloodWaitError as exc:
-            raise AccountError(f"Слишком много попыток. Подожди {_human_wait(exc.seconds)}.") from exc
-        me = await client.get_me()
-        title = me.username and f"@{me.username}" or (me.first_name or "аккаунт")
-        return client.session.save(), title, False
-    finally:
-        await client.disconnect()
 
 
 async def account_name(user_id: int) -> str | None:

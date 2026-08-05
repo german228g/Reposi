@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, User
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputMediaPhoto,
+    Update,
+    User,
+)
 from telegram.constants import ChatAction, ChatType, ParseMode
 from telegram.ext import ContextTypes
 
@@ -230,127 +237,134 @@ async def _start_account_login(update: Update, user: User) -> None:
             return
         account.drop_session(user.id)
 
-    data = storage.load_user(user.id)
-    data["stage"] = "await_phone"
-    storage.save_user(user.id, data)
-    await target.reply_text(
-        "<b>Подключение аккаунта</b>\n\n"
-        "Пришли номер телефона в формате <code>+380971234567</code>.\n"
-        "Я отправлю код в Telegram, ты пришлёшь его мне — и всё готово.\n\n"
-        "Отключить в любой момент: /logout",
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Отмена", callback_data="cancel")]]),
-    )
+    await _start_qr_login(update, user)
 
 
-async def _handle_phone(update: Update, uid: int, text: str) -> None:
-    phone = text.replace(" ", "").replace("-", "")
-    if not phone.startswith("+") or not phone[1:].isdigit() or len(phone) < 10:
-        await update.message.reply_text("Формат номера: +380971234567")
-        return
+QR_INSTRUCTIONS = (
+    "<b>Подключение аккаунта</b>\n\n"
+    "Открой на телефоне: <b>Настройки → Устройства → Подключить устройство</b>\n"
+    "и наведи камеру на этот QR-код.\n\n"
+    "Код обновляется автоматически. Если включён облачный пароль — попрошу его после сканирования.\n\n"
+    "Ввод кода цифрами Telegram запрещает: код, отправленный в переписку, "
+    "он сразу аннулирует. Поэтому вход только по QR."
+)
+
+
+async def _start_qr_login(update: Update, user: User) -> None:
+    target = _target(update)
+    uid = user.id
     try:
-        started = await account.start_login(phone)
+        png = await account.start_qr_login(uid)
     except account.AccountError as exc:
         if str(exc) == "SERVICE_NOT_CONFIGURED":
-            await _service_unavailable(update, update.effective_user)
+            await _service_unavailable(update, user)
             return
-        await update.message.reply_text(str(exc))
+        await target.reply_text(str(exc))
         return
     except Exception as exc:
-        log.exception("send_code failed")
-        await update.message.reply_text(f"Не смог отправить код: {exc}")
+        log.exception("qr login start failed")
+        await target.reply_text(f"Не смог начать подключение: {exc}")
         return
 
+    message = await target.reply_photo(
+        photo=png,
+        caption=QR_INSTRUCTIONS,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("❌ Отмена", callback_data="cancel_qr")]]
+        ),
+    )
+
     data = storage.load_user(uid)
-    data["stage"] = "await_code"
-    data["login_phone"] = phone
-    data["login_hash"] = started.phone_code_hash
-    data["login_session"] = started.session_string
+    data["stage"] = "await_qr"
+    data["qr_message_id"] = message.message_id
     storage.save_user(uid, data)
+
+    asyncio.create_task(_watch_qr_login(uid, update.effective_chat.id, message.message_id, target.get_bot()))
+
+
+async def _watch_qr_login(uid: int, chat_id: int, message_id: int, bot) -> None:
+    """Ждёт сканирование, обновляя QR, пока он не устарел окончательно."""
+    deadline = asyncio.get_event_loop().time() + 300  # 5 минут на подключение
+    while asyncio.get_event_loop().time() < deadline:
+        status, png = await account.wait_qr_login(uid)
+
+        if status == "ok":
+            name = await account.account_name(uid) or "готово"
+            data = storage.load_user(uid)
+            data["account_name"] = name
+            data["stage"] = "questionnaire"
+            data["profile"] = {}
+            data.pop("qr_message_id", None)
+            storage.save_user(uid, data)
+            await bot.send_message(
+                chat_id=chat_id,
+                text=(
+                    f"✅ Аккаунт подключён: <b>{name}</b>\n"
+                    "Канал создам сам, когда будет готов бренд.\n\n"
+                    "Расскажи идею: что продаёшь и кому? Одним предложением."
+                ),
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        if status == "password":
+            data = storage.load_user(uid)
+            data["stage"] = "await_password"
+            storage.save_user(uid, data)
+            await bot.send_message(
+                chat_id=chat_id,
+                text="QR принят. На аккаунте включён облачный пароль (2FA) — пришли его, сообщение сразу удалю.",
+            )
+            return
+
+        if status == "gone":
+            return
+
+        if status == "refresh" and png:
+            try:
+                await bot.edit_message_media(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    media=InputMediaPhoto(media=png, caption=QR_INSTRUCTIONS, parse_mode=ParseMode.HTML),
+                    reply_markup=InlineKeyboardMarkup(
+                        [[InlineKeyboardButton("❌ Отмена", callback_data="cancel_qr")]]
+                    ),
+                )
+            except Exception:
+                log.debug("qr refresh edit failed", exc_info=True)
+
+    await account.cancel_qr_login(uid)
+    try:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Время на подключение вышло. Нажми «Подключить аккаунт» — покажу новый QR.",
+            reply_markup=main_keyboard(False),
+        )
+    except Exception:
+        pass
+
+
+async def _handle_password(update: Update, uid: int, text: str) -> None:
     try:
         await update.message.delete()
     except Exception:
         pass
-    await update.effective_chat.send_message(
-        "Код отправлен в Telegram. Пришли его сюда цифрами, например <code>12345</code>.\n\n"
-        "Код приходит в чат от «Telegram» — можно просто перепечатать.",
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("🔁 Прислать код заново", callback_data="resend_code")],
-                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")],
-            ]
-        ),
-    )
 
-
-async def _handle_code(update: Update, uid: int, text: str) -> None:
-    code = "".join(ch for ch in text if ch.isdigit())
-    if len(code) < 4:
-        await update.message.reply_text("Пришли код цифрами, например 12345")
-        return
-    data = storage.load_user(uid)
-    try:
-        session_string, name, need_password = await account.complete_login(
-            phone=data.get("login_phone", ""),
-            code=code,
-            phone_code_hash=data.get("login_hash", ""),
-            session_string=data.get("login_session", ""),
-        )
-    except account.AccountError as exc:
-        if str(exc) == "EXPIRED":
-            data["stage"] = "await_phone"
-            storage.save_user(uid, data)
-            await update.message.reply_text("Код истёк. Пришли номер ещё раз — отправлю новый код.")
-            return
-        await update.message.reply_text(str(exc))
-        return
-    except Exception as exc:
-        log.exception("sign_in failed")
-        await update.message.reply_text(f"Ошибка входа: {exc}")
-        return
-
-    if need_password:
-        data["stage"] = "await_password"
-        data["login_session"] = session_string
-        storage.save_user(uid, data)
+    # QR-вход: пароль отдаём в живую сессию
+    if account.qr_login_active(uid):
         try:
-            await update.message.delete()
-        except Exception:
-            pass
-        await update.effective_chat.send_message(
-            "На аккаунте включён облачный пароль (2FA). Пришли его — сообщение сразу удалю."
-        )
+            name = await account.finish_qr_with_password(uid, text)
+        except account.AccountError as exc:
+            await update.effective_chat.send_message(str(exc))
+            return
+        except Exception as exc:
+            log.exception("qr 2fa failed")
+            await update.effective_chat.send_message(f"Не получилось войти: {exc}")
+            return
+        await _after_login(update, uid, name)
         return
 
-    await _finish_login(update, uid, session_string, name)
-
-
-async def _resend_code(update: Update, uid: int) -> None:
-    data = storage.load_user(uid)
-    if data.get("stage") != "await_code" or not data.get("login_phone"):
-        await _target(update).reply_text("Начни подключение заново: /connect")
-        return
-    try:
-        started = await account.resend_code(
-            phone=data["login_phone"],
-            phone_code_hash=data.get("login_hash", ""),
-            session_string=data.get("login_session", ""),
-        )
-    except account.AccountError as exc:
-        await _target(update).reply_text(str(exc))
-        return
-    except Exception as exc:
-        log.exception("resend failed")
-        await _target(update).reply_text(f"Не получилось переотправить код: {exc}")
-        return
-    data["login_hash"] = started.phone_code_hash
-    data["login_session"] = started.session_string
-    storage.save_user(uid, data)
-    await _target(update).reply_text("Код отправлен заново. Пришли цифры.")
-
-
-async def _handle_password(update: Update, uid: int, text: str) -> None:
     data = storage.load_user(uid)
     try:
         session_string, name, _ = await account.complete_login(
@@ -361,28 +375,24 @@ async def _handle_password(update: Update, uid: int, text: str) -> None:
             password=text,
         )
     except account.AccountError as exc:
-        await update.message.reply_text(str(exc))
+        await update.effective_chat.send_message(str(exc))
         return
     except Exception as exc:
         log.exception("2fa failed")
-        await update.message.reply_text(f"Пароль не подошёл: {exc}")
+        await update.effective_chat.send_message(f"Пароль не подошёл: {exc}")
         return
-    await _finish_login(update, uid, session_string, name)
-
-
-async def _finish_login(update: Update, uid: int, session_string: str, name: str) -> None:
     account.save_session(uid, session_string)
+    await _after_login(update, uid, name)
+
+
+async def _after_login(update: Update, uid: int, name: str) -> None:
     data = storage.load_user(uid)
     data["account_name"] = name
-    for key in ("login_phone", "login_hash", "login_session"):
+    for key in ("login_phone", "login_hash", "login_session", "qr_message_id"):
         data.pop(key, None)
     data["stage"] = "questionnaire"
     data["profile"] = {}
     storage.save_user(uid, data)
-    try:
-        await update.message.delete()
-    except Exception:
-        pass
     await update.effective_chat.send_message(
         f"✅ Аккаунт подключён: <b>{name or 'готово'}</b>\n"
         "Канал я создам сам, когда будет готов бренд.\n\n"
@@ -468,8 +478,13 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if data == "connect_account":
         await _start_account_login(update, user)
         return
-    if data == "resend_code":
-        await _resend_code(update, uid)
+    if data == "cancel_qr":
+        await account.cancel_qr_login(uid)
+        user_data = storage.load_user(uid)
+        user_data["stage"] = "idle"
+        user_data.pop("qr_message_id", None)
+        storage.save_user(uid, user_data)
+        await query.message.reply_text("Подключение отменено.", reply_markup=main_keyboard(False))
         return
     if data == "start_flow":
         await _begin_flow(update, user)
@@ -546,11 +561,12 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     stage = data.get("stage", "idle")
 
-    if stage == "await_phone":
-        await _handle_phone(update, uid, text)
-        return
-    if stage == "await_code":
-        await _handle_code(update, uid, text)
+    if stage == "await_qr":
+        await message.reply_text(
+            "Жду сканирование QR-кода выше.\n"
+            "Настройки → Устройства → Подключить устройство.\n\n"
+            "Код цифрами присылать не нужно — Telegram аннулирует коды из переписки."
+        )
         return
     if stage == "await_password":
         await _handle_password(update, uid, text)

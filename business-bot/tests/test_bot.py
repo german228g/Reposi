@@ -174,6 +174,7 @@ class _Recorder:
 
     def __init__(self, text: str = "", user_id: int = 4242):
         self.sent: list[str] = []
+        self.photos: list[str] = []
         self.text = text
         self.user_id = user_id
 
@@ -194,11 +195,17 @@ class _Recorder:
                 self.chat = Chat()
                 self.forward_origin = None
 
+            message_id = 10
+
             async def reply_text(self, text, **k):
                 recorder.sent.append(text)
 
-            async def reply_photo(self, *a, **k):
-                pass
+            async def reply_photo(self, photo=None, caption=None, **k):
+                recorder.photos.append(caption or "")
+                return SimpleNamespace(message_id=11)
+
+            def get_bot(self):
+                return SimpleNamespace()
 
             async def delete(self):
                 pass
@@ -302,8 +309,22 @@ def test_setapi_denied_for_non_admin(tmp_path, monkeypatch):
     assert "только владельцу" in rec.joined
 
 
-def test_phone_step_asks_only_for_code(tmp_path, monkeypatch):
-    """После номера бот просит только код — без технических подробностей."""
+def test_qr_png_is_valid_image():
+    """QR рисуется из ссылки tg://login и остаётся читаемым PNG."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    import bot.telegram_account as account
+
+    png = account.qr_png("tg://login?token=AQIDBAUGBwgJCg")
+    image = Image.open(BytesIO(png))
+    assert image.format == "PNG"
+    assert image.width >= 200 and image.width == image.height
+
+
+def test_qr_login_shows_code_and_waits(tmp_path, monkeypatch):
+    """Подключение показывает QR и не просит вводить код цифрами."""
     import bot.handlers as handlers
     import bot.storage as storage
     import bot.telegram_account as account
@@ -312,47 +333,97 @@ def test_phone_step_asks_only_for_code(tmp_path, monkeypatch):
     monkeypatch.setenv("TG_API_ID", "1234567")
     monkeypatch.setenv("TG_API_HASH", "abcdef")
 
-    async def fake_start_login(phone):
-        assert phone == "+380971234567"
-        return account.LoginStarted(phone_code_hash="HASH", session_string="SESSION")
+    async def fake_start_qr(user_id):
+        return account.qr_png("tg://login?token=TEST")
 
-    monkeypatch.setattr(account, "start_login", fake_start_login)
+    monkeypatch.setattr(account, "start_qr_login", fake_start_qr)
+    monkeypatch.setattr(handlers.asyncio, "create_task", lambda coro: coro.close())
 
     rec = _Recorder(user_id=4242)
-    asyncio.run(handlers._handle_phone(rec, 4242, "+380971234567"))
-    data = storage.load_user(4242)
-    assert data["stage"] == "await_code"
-    assert data["login_hash"] == "HASH"
-    assert "Код отправлен" in rec.joined
-    assert "api" not in rec.joined.lower()
+    asyncio.run(handlers._start_qr_login(rec, rec.effective_user))
+
+    assert rec.photos, "QR-код не отправлен"
+    caption = rec.photos[0]
+    assert "Устройства" in caption and "QR" in caption
+    assert "цифр" not in caption.split("Ввод кода")[0].lower()
+    assert storage.load_user(4242)["stage"] == "await_qr"
 
 
-def test_expired_code_restarts_at_phone(tmp_path, monkeypatch):
+def test_typed_code_is_rejected_with_explanation(tmp_path, monkeypatch):
+    """Если человек всё же прислал цифры — объясняем, а не пытаемся войти."""
     import bot.handlers as handlers
     import bot.storage as storage
-    import bot.telegram_account as account
 
     monkeypatch.setattr(storage, "USERS", tmp_path / "users")
-    storage.save_user(
-        4242,
-        {
-            "user_id": 4242,
-            "stage": "await_code",
-            "login_phone": "+380971234567",
-            "login_hash": "H",
-            "login_session": "S",
-            "profile": {},
-        },
-    )
+    storage.save_user(4242, {"user_id": 4242, "stage": "await_qr", "profile": {}})
 
-    async def fake_complete(**kwargs):
-        raise account.AccountError("EXPIRED")
+    rec = _Recorder(text="29218", user_id=4242)
+    asyncio.run(handlers.on_message(rec, SimpleNamespace(bot=SimpleNamespace())))
+    assert "аннулирует" in rec.joined
+    assert storage.load_user(4242)["stage"] == "await_qr"
 
-    monkeypatch.setattr(account, "complete_login", fake_complete)
-    rec = _Recorder(user_id=4242)
-    asyncio.run(handlers._handle_code(rec, 4242, "12345"))
-    assert storage.load_user(4242)["stage"] == "await_phone"
-    assert "истёк" in rec.joined
+
+def test_qr_wait_refresh_and_success(monkeypatch, tmp_path):
+    """Устаревший QR пересоздаётся, успешный вход сохраняет сессию."""
+    import bot.telegram_account as account
+
+    monkeypatch.setattr(account, "SESSIONS", tmp_path / "sessions")
+    calls: list[str] = []
+
+    class FakeQr:
+        url = "tg://login?token=A"
+
+        def __init__(self):
+            self.waits = 0
+
+        async def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits == 1:
+                raise asyncio.TimeoutError
+            return SimpleNamespace(username="client", first_name="C")
+
+        async def recreate(self):
+            calls.append("recreate")
+            self.url = "tg://login?token=B"
+
+    class FakeClient:
+        session = SimpleNamespace(save=lambda: "SESSION_STRING")
+
+        async def disconnect(self):
+            calls.append("disconnect")
+
+    account._QR[4242] = account.QrSession(client=FakeClient(), qr=FakeQr())
+
+    status, png = asyncio.run(account.wait_qr_login(4242, timeout=0.01))
+    assert status == "refresh" and png and "recreate" in calls
+
+    status, _ = asyncio.run(account.wait_qr_login(4242, timeout=0.01))
+    assert status == "ok"
+    assert account.load_session(4242) == "SESSION_STRING"
+    assert not account.qr_login_active(4242)
+    account.drop_session(4242)
+
+
+def test_qr_2fa_password_completes_login(monkeypatch, tmp_path):
+    import bot.telegram_account as account
+
+    monkeypatch.setattr(account, "SESSIONS", tmp_path / "sessions")
+
+    class FakeClient:
+        session = SimpleNamespace(save=lambda: "SESSION_2FA")
+
+        async def sign_in(self, password=None):
+            assert password == "secret"
+            return SimpleNamespace(username=None, first_name="Клиент")
+
+        async def disconnect(self):
+            pass
+
+    account._QR[777] = account.QrSession(client=FakeClient(), qr=SimpleNamespace())
+    name = asyncio.run(account.finish_qr_with_password(777, "secret"))
+    assert name == "Клиент"
+    assert account.load_session(777) == "SESSION_2FA"
+    account.drop_session(777)
 
 
 def test_dialog_flow_reaches_brand(tmp_path, monkeypatch):
