@@ -98,15 +98,21 @@ def generate_logo(
         draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=accent)
         inner = r - size // 12
         draw.ellipse([cx - inner, cy - inner, cx + inner, cy + inner], fill=bg)
-        draw.ellipse([cx - size // 8, cy - size // 8, cx + size // 8, cy + size // 8], fill=secondary)
 
     initials = _initials(brand_name)
     font = _font(size // 5)
     bbox = draw.textbbox((0, 0), initials, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    text_color = (255, 255, 255) if sum(accent) < 400 else (20, 20, 20)
-    # For styles where mark is dark circle/shape, place initials centered
-    draw.text((cx - tw / 2, cy - th / 2 - size // 40), initials, fill=text_color, font=font)
+
+    if style_key == "minimal":
+        # подложка под инициалы всегда шире текста, иначе буквы вылезают за круг
+        disc = int(max(tw, th) * 0.72) + size // 24
+        draw.ellipse([cx - disc, cy - disc, cx + disc, cy + disc], fill=secondary)
+        text_color = (20, 20, 20) if sum(_hex_to_rgb(palette[2] if len(palette) > 2 else "#EEEEEE")) > 400 else (255, 255, 255)
+    else:
+        text_color = (255, 255, 255) if sum(accent) < 400 else (20, 20, 20)
+
+    draw.text((cx - tw / 2 - bbox[0], cy - th / 2 - bbox[1]), initials, fill=text_color, font=font)
 
     # Wordmark strip at bottom
     bar_h = size // 7

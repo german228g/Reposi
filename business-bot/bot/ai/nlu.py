@@ -78,6 +78,7 @@ STOPWORDS = {
     "просто", "типа", "чтобы", "который", "которая", "начать", "открыть", "заниматься",
     "планирую", "думаю", "мечтаю", "идея", "проект", "нужно", "нужен", "нужна", "есть",
     "можно", "также", "тоже", "года", "лет", "около", "примерно", "может", "быть", "самое",
+    "бюджет", "без", "вложений", "денег", "грн", "руб", "тыс", "onlajn", "онлайн",
 }
 
 
@@ -134,10 +135,12 @@ def extract_budget(text: str) -> str | None:
     low = (text or "").lower()
     if any(w in low for w in ["без вложений", "без бюджета", "нет денег", "ноль", "0 грн", "бесплатно"]):
         return "0"
-    m = BUDGET_RE.search(low)
-    if m:
+    # возрастной диапазон («14-22») не должен читаться как бюджет
+    cleaned = AGE_RANGE_RE.sub(" ", low)
+    cleaned = AGE_PLUS_RE.sub(" ", cleaned)
+    for m in BUDGET_RE.finditer(cleaned):
         raw = m.group(1).replace(" ", "")
-        if raw.isdigit() and 100 <= int(raw) <= 10_000_000:
+        if raw.isdigit() and 300 <= int(raw) <= 10_000_000:
             return raw
     return None
 
