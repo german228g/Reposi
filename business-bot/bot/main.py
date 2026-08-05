@@ -26,6 +26,7 @@ from bot.handlers import (  # noqa: E402
     cmd_start,
     cmd_status,
     on_callback,
+    on_error,
     on_message,
 )
 
@@ -52,7 +53,8 @@ def main() -> None:
     app.add_handler(CommandHandler("channel", cmd_channel))
     app.add_handler(CommandHandler("publish", cmd_publish))
     app.add_handler(CallbackQueryHandler(on_callback))
-    app.add_handler(MessageHandler((filters.TEXT | filters.FORWARDED) & ~filters.COMMAND, on_message))
+    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, on_message))
+    app.add_error_handler(on_error)
 
     print("Business Launch Bot запущен. Ctrl+C — стоп.")
     app.run_polling(allowed_updates=["message", "callback_query"])
