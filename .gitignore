@@ -1,4 +1,5 @@
 business-bot/data/brands/
+business-bot/data/sessions/
 business-bot/data/users/
 business-bot/.env
 business-bot/.venv/
