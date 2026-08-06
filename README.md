@@ -1,23 +1,34 @@
-# Telegram → Gmail (клиенту)
+# Telegram → DEMO Receipt (OFFICIALBRAND)
 
-С `oficcialbrandeu@gmail.com` бот отправляет текст **на почту клиента**.
+Бот собирает данные по шагам и отправляет **учебный DEMO-чек** на почту клиента.
 
-## Как работает
+⚠️ В письме и превью всегда есть пометка **DEMO / NOT A REAL RECEIPT**.
 
-1. Клиент пишет `/start`
-2. Бот один раз спрашивает его email и сохраняет
-3. Дальше любой текст уходит письмом **на почту клиента**
-4. Клиент сам почту не меняет — только поддержка: `/setemail <user_id> <email>`
+## Поля (11 шагов)
+
+1. Name
+2. Surname
+3. Product Name
+4. Order Date (YYYY-MM-DD)
+5. Product Image URL
+6. Product Price
+7. Street
+8. City
+9. ZIP Code
+10. Phone Number
+11. State
+
+После заполнения — превью в Telegram → кнопки **Send Receipt** / **Start Over**.
 
 ## Где файлы
 
 ```
-/workspace/bot/main.py      # бот
-/workspace/bot/mailer.py    # SMTP отправка
-/workspace/bot/config.py    # отправитель oficcialbrandeu@gmail.com
-/workspace/bot/storage.py   # сохранённые почты клиентов
-/workspace/data/users.json  # база (создаётся при запуске)
-/workspace/.env             # секреты
+/workspace/bot/main.py              # бот, шаги, кнопки
+/workspace/bot/form_steps.py        # вопросы и валидация
+/workspace/bot/receipt_template.py  # HTML-шаблон DEMO-чека
+/workspace/bot/mailer.py            # отправка Gmail
+/workspace/bot/storage.py           # email клиента
+/workspace/.env                     # секреты
 ```
 
 ## Запуск
@@ -26,3 +37,9 @@
 source .venv/bin/activate
 ./run.sh
 ```
+
+## Команды
+
+- `/start` — новый чек
+- `/cancel` — отменить заполнение
+- `/setemail <user_id> <email>` — смена почты клиента (поддержка)
