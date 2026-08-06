@@ -45,22 +45,26 @@ def test_send_to_client_email(monkeypatch: pytest.MonkeyPatch) -> None:
         def send_message(self, message: EmailMessage):
             sent["to"] = message["To"]
             sent["from"] = message["From"]
-            sent["body"] = message.get_content()
+            sent["subject"] = message["Subject"]
+            sent["body"] = message.get_body(preferencelist=("plain",)).get_content()
 
     monkeypatch.setattr(mailer.smtplib, "SMTP_SSL", FakeSMTP)
     settings = config.Settings(
         telegram_bot_token="t",
         gmail_address="oficcialbrandeu@gmail.com",
         gmail_password="secret",
-        email_subject="Тема",
+        email_subject="OFFICIALBRAND",
         admin_ids=frozenset(),
     )
     mailer.send_text_email(
-        settings, "привет", to_email="client@example.com", from_user="@user"
+        settings, "привет друг", to_email="client@example.com", from_user="@user"
     )
-    assert sent["from"] == "oficcialbrandeu@gmail.com"
+    assert "oficcialbrandeu@gmail.com" in sent["from"]
+    assert "OFFICIALBRAND" in sent["from"]
     assert sent["to"] == "client@example.com"
-    assert "привет" in sent["body"]
+    assert sent["subject"] == "привет друг"
+    assert "привет друг" in sent["body"]
+    assert "Telegram" not in sent["body"]
 
 
 def test_user_email_once(tmp_path: Path) -> None:

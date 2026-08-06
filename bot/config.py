@@ -24,7 +24,7 @@ def load_settings() -> Settings:
     token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     gmail = os.getenv("GMAIL_ADDRESS", SENDER_GMAIL).strip() or SENDER_GMAIL
     password = os.getenv("GMAIL_APP_PASSWORD", "").strip()
-    subject = os.getenv("DEFAULT_EMAIL_SUBJECT", "Сообщение из Telegram").strip()
+    subject = os.getenv("DEFAULT_EMAIL_SUBJECT", "OFFICIALBRAND").strip()
     admin_raw = os.getenv("ADMIN_IDS", "").strip()
     admin_ids = frozenset(
         int(x) for x in admin_raw.split(",") if x.strip().isdigit()
