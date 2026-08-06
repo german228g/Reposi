@@ -16,7 +16,7 @@ from aiogram.types import (
 )
 
 from email_sender import send_receipt_email
-from receipt_generator import build_receipt_html, generate_order_number, render_receipt_image
+from receipt_generator import generate_order_number, generate_receipt_image
 
 TELEGRAM_BOT_TOKEN = "8305270882:AAHYqbnMOss_UaRlQ12u56fDLNIe6qDWpwI"
 
@@ -315,11 +315,14 @@ async def process_email(message: Message, state: FSMContext) -> None:
 
     await message.answer("⏳ Генерирую чек и отправляю на email...")
 
-    html = build_receipt_html(receipt_data)
     OUTPUT_DIR.mkdir(exist_ok=True)
     image_path = OUTPUT_DIR / f"receipt_{message.from_user.id}.png"
-    render_receipt_image(html, image_path)
-    send_receipt_email(email, html, image_path)
+    generate_receipt_image(receipt_data, image_path)
+    send_receipt_email(
+        email,
+        f"<p>Your Apple Receipt {data['order_number']} is attached.</p>",
+        image_path,
+    )
 
     await message.answer(
         f"✅ Чек отправлен на {email}\nOrder Number: {data['order_number']}"

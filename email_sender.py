@@ -6,7 +6,7 @@ from pathlib import Path
 
 GMAIL_ADDRESS = "oficcialbrandeu@gmail.com"
 GMAIL_APP_PASSWORD = "jtnpbndftzlwfxna"
-DEFAULT_EMAIL_SUBJECT = "Ваш чек Apple"
+DEFAULT_EMAIL_SUBJECT = "Apple Receipt"
 
 
 def send_receipt_email(
@@ -23,7 +23,7 @@ def send_receipt_email(
     with open(image_path, "rb") as image_file:
         image_data = image_file.read()
 
-    html_part = MIMEText(html_body, "html", "utf-8")
+    html_part = MIMEText(html_body or "<p>Your Apple Receipt is attached.</p>", "html", "utf-8")
     message.attach(html_part)
 
     image_part = MIMEImage(image_data, _subtype="png")
