@@ -6,7 +6,7 @@ from pathlib import Path
 
 GMAIL_ADDRESS = "oficcialbrandeu@gmail.com"
 GMAIL_APP_PASSWORD = "jtnpbndftzlwfxna"
-DEFAULT_EMAIL_SUBJECT = "OFFICIALBRAND"
+DEFAULT_EMAIL_SUBJECT = "Ваш чек Apple"
 
 
 def send_receipt_email(
@@ -17,7 +17,7 @@ def send_receipt_email(
 ) -> None:
     message = MIMEMultipart("related")
     message["Subject"] = subject
-    message["From"] = f"OFFICIALBRAND <{GMAIL_ADDRESS}>"
+    message["From"] = f"Apple Store <{GMAIL_ADDRESS}>"
     message["To"] = recipient
 
     with open(image_path, "rb") as image_file:
