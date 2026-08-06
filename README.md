@@ -1,35 +1,20 @@
-# Zelyon Receipts — Telegram Bot
+# OFFICIALBRAND Receipt Bot
 
-Telegram-бот для генерации Apple Receipt по данным пользователя.
-
-## Требования
-
-- Python 3.10+
-- `wkhtmltoimage` (для imgkit)
-
-### Установка wkhtmltoimage (Ubuntu/Debian)
-
-```bash
-sudo apt-get update && sudo apt-get install -y wkhtmltopdf
-```
+Telegram-бот для генерации чеков OFFICIALBRAND.
 
 ## Установка
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Запуск
-
-```bash
 python3 main.py
 ```
 
-## Использование
+## Сценарий
 
-1. Отправьте `/start` боту в Telegram.
-2. Заполните 3 части формы (Name, Surname, Product Name → Order Date, Product Image URL, Product Price → Street, City, ZIP, Phone, State).
-3. Проверьте превью и нажмите **Send Receipt**.
-4. Введите email — чек будет отправлен через Gmail SMTP.
+1. `/start`
+2. Фото продукта
+3. Название продукта
+4. Имя покупателя
+5. Email
 
-Кнопка **Start Over** / **Отмена** — начать заново.
+Бот пришлёт PNG в Telegram и отправит письмо с чеком в теле (`cid:receipt`).
