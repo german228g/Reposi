@@ -1,5 +1,6 @@
 import random
 import string
+from datetime import datetime
 from pathlib import Path
 
 import imgkit
@@ -17,9 +18,11 @@ def generate_order_number() -> str:
 def build_receipt_html(data: dict) -> str:
     env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)))
     template = env.get_template("receipt.html")
+    order_datetime = data.get("order_datetime") or datetime.now().strftime("%Y-%m-%d %H:%M")
     return template.render(
         order_number=data["order_number"],
         order_date=data["order_date"],
+        order_datetime=order_datetime,
         product_name=data["product_name"],
         product_image_url=data["product_image_url"],
         price=data["price"],
