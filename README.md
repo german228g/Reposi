@@ -1,39 +1,28 @@
-# Telegram → Gmail
+# Telegram → Gmail (клиенту)
 
-Бот принимает текст в Telegram и отправляет его на фиксированную почту
-`oficcialbrandeu@gmail.com`. Пользователь адрес не меняет — только поддержка
-в `bot/config.py` (`FIXED_RECIPIENT`).
+С `oficcialbrandeu@gmail.com` бот отправляет текст **на почту клиента**.
+
+## Как работает
+
+1. Клиент пишет `/start`
+2. Бот один раз спрашивает его email и сохраняет
+3. Дальше любой текст уходит письмом **на почту клиента**
+4. Клиент сам почту не меняет — только поддержка: `/setemail <user_id> <email>`
 
 ## Где файлы
 
 ```
-/workspace/
-  bot/main.py       # Telegram-бот
-  bot/mailer.py     # отправка через Gmail SMTP
-  bot/config.py     # настройки + FIXED_RECIPIENT
-  .env              # секреты (локально, не в git)
-  .env.example
-  requirements.txt
-  run.sh
-  tests/
+/workspace/bot/main.py      # бот
+/workspace/bot/mailer.py    # SMTP отправка
+/workspace/bot/config.py    # отправитель oficcialbrandeu@gmail.com
+/workspace/bot/storage.py   # сохранённые почты клиентов
+/workspace/data/users.json  # база (создаётся при запуске)
+/workspace/.env             # секреты
 ```
-
-## Важно про Gmail
-
-Обычный пароль Google **не работает** для SMTP.
-Нужен [пароль приложения](https://myaccount.google.com/apppasswords)
-(включи 2FA → Пароли приложений → вставь 16 символов в `GMAIL_APP_PASSWORD`).
 
 ## Запуск
 
 ```bash
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 ./run.sh
 ```
-
-## Использование
-
-1. `/start` боту
-2. Любой текст → письмо на фиксированную почту

@@ -1,29 +1,22 @@
 from __future__ import annotations
 
 from email.message import EmailMessage
+from pathlib import Path
 
 import pytest
 
 from bot import config, mailer
+from bot.storage import UserStore, is_valid_email
 
 
 def test_load_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
     monkeypatch.setenv("GMAIL_ADDRESS", "oficcialbrandeu@gmail.com")
     monkeypatch.setenv("GMAIL_APP_PASSWORD", "secret")
-    monkeypatch.setenv("DEFAULT_EMAIL_SUBJECT", "Test")
-
+    monkeypatch.setenv("ADMIN_IDS", "1,2")
     settings = config.load_settings()
-    assert settings.recipient_email == config.FIXED_RECIPIENT
-    assert settings.recipient_email == "oficcialbrandeu@gmail.com"
-
-
-def test_recipient_cannot_be_overridden_by_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
-    monkeypatch.setenv("GMAIL_APP_PASSWORD", "secret")
-    monkeypatch.setenv("RECIPIENT_EMAIL", "hacker@example.com")
-    settings = config.load_settings()
-    assert settings.recipient_email == "oficcialbrandeu@gmail.com"
+    assert settings.gmail_address == "oficcialbrandeu@gmail.com"
+    assert settings.admin_ids == frozenset({1, 2})
 
 
 def test_load_settings_missing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -33,7 +26,7 @@ def test_load_settings_missing(monkeypatch: pytest.MonkeyPatch) -> None:
         config.load_settings()
 
 
-def test_send_text_email(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_send_to_client_email(monkeypatch: pytest.MonkeyPatch) -> None:
     sent: dict = {}
 
     class FakeSMTP:
@@ -52,21 +45,29 @@ def test_send_text_email(monkeypatch: pytest.MonkeyPatch) -> None:
         def send_message(self, message: EmailMessage):
             sent["to"] = message["To"]
             sent["from"] = message["From"]
-            sent["subject"] = message["Subject"]
             sent["body"] = message.get_content()
 
     monkeypatch.setattr(mailer.smtplib, "SMTP_SSL", FakeSMTP)
-
     settings = config.Settings(
         telegram_bot_token="t",
         gmail_address="oficcialbrandeu@gmail.com",
         gmail_password="secret",
-        recipient_email="oficcialbrandeu@gmail.com",
-        email_subject="Сообщение из Telegram",
+        email_subject="Тема",
+        admin_ids=frozenset(),
     )
-    mailer.send_text_email(settings, "привет", from_user="@user")
-
-    assert sent["to"] == "oficcialbrandeu@gmail.com"
+    mailer.send_text_email(
+        settings, "привет", to_email="client@example.com", from_user="@user"
+    )
     assert sent["from"] == "oficcialbrandeu@gmail.com"
+    assert sent["to"] == "client@example.com"
     assert "привет" in sent["body"]
-    assert "@user" in sent["body"]
+
+
+def test_user_email_once(tmp_path: Path) -> None:
+    store = UserStore(tmp_path / "users.json")
+    assert store.get_email(10) is None
+    assert store.set_email(10, "Client@Gmail.com") == "client@gmail.com"
+    with pytest.raises(PermissionError):
+        store.set_email(10, "other@gmail.com")
+    assert store.set_email(10, "other@gmail.com", force=True) == "other@gmail.com"
+    assert not is_valid_email("not-an-email")

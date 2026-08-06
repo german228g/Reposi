@@ -6,11 +6,17 @@ from email.message import EmailMessage
 from bot.config import Settings
 
 
-def send_text_email(settings: Settings, body: str, *, from_user: str) -> None:
+def send_text_email(
+    settings: Settings,
+    body: str,
+    *,
+    to_email: str,
+    from_user: str,
+) -> None:
     message = EmailMessage()
     message["Subject"] = settings.email_subject
     message["From"] = settings.gmail_address
-    message["To"] = settings.recipient_email
+    message["To"] = to_email
     message.set_content(
         f"Сообщение из Telegram от {from_user}:\n\n{body}\n"
     )
