@@ -2,25 +2,20 @@ from __future__ import annotations
 
 import smtplib
 from email.message import EmailMessage
-from email.utils import formataddr, formatdate, make_msgid
+from email.utils import formatdate, make_msgid
 from typing import Any
 
 from bot.config import Settings
-from bot.receipt_template import render_html, render_plain
-
-BRAND_NAME = "OFFICIALBRAND"
+from bot.receipt_template import email_subject, render_html, render_plain
 
 
 def send_receipt_email(settings: Settings, data: dict[str, Any], *, to_email: str) -> None:
-    order_no = data["order_number"]
     plain = render_plain(data)
     html_body = render_html(data)
 
     message = EmailMessage()
-    message["Subject"] = (
-        f"Your OFFICIALBRAND Order Receipt - {order_no} [DEMO]"
-    )
-    message["From"] = formataddr((BRAND_NAME, settings.gmail_address))
+    message["Subject"] = email_subject(data)
+    message["From"] = settings.gmail_address
     message["To"] = to_email
     message["Reply-To"] = settings.gmail_address
     message["Date"] = formatdate(localtime=True)

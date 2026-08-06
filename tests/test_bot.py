@@ -7,7 +7,7 @@ import pytest
 
 from bot import config, mailer
 from bot.form_steps import is_valid_date, is_valid_email, validate_step
-from bot.receipt_template import format_preview, generate_order_number, render_html
+from bot.receipt_template import email_subject, format_preview, generate_order_number, render_html
 from bot.storage import UserStore
 
 
@@ -26,27 +26,32 @@ def test_form_validation() -> None:
     assert validate_step("product_image_url", "https://x.com/a.png") is None
 
 
-def test_preview_contains_demo_banner() -> None:
+def test_preview_matches_template_style() -> None:
     data = {
         "name": "John",
         "surname": "Doe",
-        "product_name": "Phone",
-        "order_number": "W12345678",
-        "product_price": "$100",
-        "order_date": "2024-01-01",
-        "street": "St 1",
-        "city": "City",
-        "state": "ST",
-        "zip_code": "1000",
-        "phone": "+1 111",
+        "product_name": "Iphone 13",
+        "order_number": "W30514310",
+        "product_price": "$800",
+        "order_date": "1999-12-12",
+        "street": "STREET 113",
+        "city": "CITY",
+        "state": "KIEV",
+        "zip_code": "9000",
+        "phone": "+380 333333333",
         "product_image_url": "https://example.com/p.png",
     }
     preview = format_preview(data)
     html_body = render_html(data)
-    assert "DEMO / NOT A REAL RECEIPT" in preview
+    assert "🍎 Apple Receipt Preview" in preview
+    assert "Send Receipt" in preview
+    assert email_subject(data) == "Your Apple Order Receipt - W30514310"
+    assert "Thank you for your order." in html_body
+    assert "Items to be" in html_body
+    assert "EXPRESS SHIPPING" in html_body
+    assert "Billing and" in html_body
+    assert "Apple Distribution International Ltd." in html_body
     assert "DEMO / NOT A REAL RECEIPT" in html_body
-    assert "OFFICIALBRAND" in html_body
-    assert "Apple" not in html_body
 
 
 def test_send_receipt_email(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,7 +99,7 @@ def test_send_receipt_email(monkeypatch: pytest.MonkeyPatch) -> None:
     }
     mailer.send_receipt_email(settings, data, to_email="client@example.com")
     assert sent["to"] == "client@example.com"
-    assert "[DEMO]" in sent["subject"]
+    assert sent["subject"] == email_subject(data)
     assert "DEMO / NOT A REAL RECEIPT" in sent["body"]
 
 
