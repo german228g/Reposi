@@ -50,7 +50,8 @@ def test_preview_matches_template_style() -> None:
     assert "Items to be" in html_body
     assert "EXPRESS SHIPPING" in html_body
     assert "Billing and" in html_body
-    assert "Apple Distribution International Ltd." in html_body
+    assert "bgcolor=\"#f5f5f7\"" in html_body
+    assert 'align="center"' in html_body
     assert "DEMO / NOT A REAL RECEIPT" in html_body
 
 

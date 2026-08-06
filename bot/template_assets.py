@@ -2,8 +2,10 @@ APPLE_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="26" height="3
   <path fill="#86868b" d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-163-39.5c-76 0-102.7 38.3-163.1 39.5-65.8 1.2-115.8-65.1-158.7-126.7C36.2 649.2 1.8 455.8 74.9 327.4c36.4-63.1 101.6-103.1 172.5-104.2 67.7-1.1 131.6 45.6 163.1 45.6 31.5 0 90.3-56.3 152.2-48 25.9 1.1 98.4 10.5 144.9 79.1-3.8 2.3-86.5 50.4-85.6 150.4zM658.5 145.1c37.1-45 62-107.5 55.2-170-53.4 2.2-118 35.6-156.4 80.6-34.4 39.7-64.4 103.1-56.3 163.9 59.7 4.6 120.7-30.4 157.5-74.5z"/>
 </svg>"""
 
-WARRANTY_HTML = """
-<div style="padding:24px 40px 8px;font-size:11px;line-height:1.55;color:#6e6e73;text-align:left;">
+WARRANTY_HTML = f"""
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff">
+  <tr>
+    <td bgcolor="#ffffff" style="padding:24px 32px 8px;background-color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:1.55;color:#6e6e73;text-align:left;">
   <p style="margin:0 0 12px;font-weight:700;color:#1d1d1f;">Apple One (1) Year Limited Warranty — (UK and Ireland)<br>For Apple Branded Products Only</p>
   <p style="margin:0 0 12px;font-weight:700;color:#1d1d1f;">CONSUMER LAW</p>
   <p style="margin:0 0 12px;">The Apple One-Year Limited Warranty is a voluntary manufacturer's warranty. It provides rights separate to rights provided by consumer law, including but not limited to those relating to non-conforming goods.</p>
@@ -43,5 +45,7 @@ WARRANTY_HTML = """
   <p style="margin:0 0 12px;">Where the product was purchased in Ireland, this warranty is governed by and construed under the laws of Ireland. Where the product was purchased in the UK, this warranty is governed by and construed under the laws of England.</p>
   <p style="margin:12px 0 0;">© 2023 Apple Inc. All rights reserved. Apple and the Apple logo are trademarks of Apple Inc., registered in the US and other countries.</p>
   <p style="margin:8px 0 0;">071816-UK-Ireland-Universal-Warranty-v1.2</p>
-</div>
+    </td>
+  </tr>
+</table>
 """
