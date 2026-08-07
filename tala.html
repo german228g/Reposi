@@ -6,14 +6,30 @@
     <title>Дія</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
         body { 
-            height: 100vh; 
-            width: 100vw; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             background: #222; 
             font-family: -apple-system, 'Helvetica Neue', sans-serif;
+            overscroll-behavior: none;
+        }
+
+        /* прячем скроллбар везде — как в нативном приложении */
+        * {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        *::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            background: transparent !important;
         }
 
         .phone {
@@ -42,13 +58,14 @@
             overflow-x: hidden;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none; /* IE/Edge legacy */
+            overscroll-behavior: contain;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
         }
         .screen-scroll::-webkit-scrollbar {
-            display: none; /* Chrome/Safari */
-            width: 0;
-            height: 0;
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
         }
 
         /* --- ПРИВЕТСТВИЕ --- */
