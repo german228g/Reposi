@@ -42,6 +42,13 @@
             overflow-x: hidden;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge legacy */
+        }
+        .screen-scroll::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+            width: 0;
+            height: 0;
         }
 
         /* --- ПРИВЕТСТВИЕ --- */
