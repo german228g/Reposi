@@ -91,56 +91,86 @@
 
         /* --- ПИН-КОД --- */
         #screen-pin {
-            background: linear-gradient(180deg, #d2ecfa 0%, #e4f5ee 100%);
-            justify-content: center;
+            background: linear-gradient(180deg, #d8eef8 0%, #e7f5ef 55%, #eef6e8 100%);
+            justify-content: flex-start;
             align-items: center;
+            padding-top: 18vh;
         }
         #screen-pin h2 {
-            font-size: 22px;
-            font-weight: 500;
-            color: #1a1a1a;
-            margin-bottom: 40px;
+            font-size: 21px;
+            font-weight: 400;
+            color: #111;
+            letter-spacing: -0.01em;
+            margin-bottom: 28px;
         }
         #screen-pin .dots {
             display: flex;
-            gap: 14px;
-            margin-bottom: 50px;
+            gap: 18px;
+            margin-bottom: 56px;
         }
         #screen-pin .dot {
-            width: 12px; height: 12px;
+            width: 11px;
+            height: 11px;
             border-radius: 50%;
             background: #fff;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.4);
+            transition: background 0.12s ease;
         }
-        #screen-pin .dot.filled { background: #1a1a1a; }
+        #screen-pin .dot.filled { background: #111; }
         #screen-pin .keypad {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            max-width: 280px;
-            width: 100%;
+            grid-template-columns: repeat(3, 72px);
+            gap: 18px 22px;
+            justify-content: center;
+            width: auto;
         }
         #screen-pin .key {
+            width: 72px;
+            height: 72px;
             background: #fff;
             border-radius: 50%;
-            height: 68px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
-            font-weight: 400;
-            color: #1a1a1a;
+            font-size: 28px;
+            font-weight: 300;
+            color: #111;
             cursor: pointer;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
         }
-        #screen-pin .key:active { opacity: 0.7; }
-        #screen-pin .key.empty { background: transparent; pointer-events: none; }
-        #screen-pin .key.back { font-size: 22px; }
+        #screen-pin .key:active {
+            transform: scale(0.96);
+            background: #f3f3f3;
+        }
+        #screen-pin .key.empty {
+            background: transparent;
+            box-shadow: none;
+            pointer-events: none;
+        }
+        #screen-pin .key.back {
+            background: transparent;
+            box-shadow: none;
+            font-size: 0;
+        }
+        #screen-pin .key.back svg {
+            width: 30px;
+            height: 22px;
+            display: block;
+        }
+        #screen-pin .key.back:active {
+            background: transparent;
+            opacity: 0.45;
+            transform: none;
+        }
         #screen-pin .pin-footer {
             position: absolute;
-            bottom: 60px;
+            bottom: 52px;
             font-size: 15px;
-            color: #1a1a1a;
-            font-weight: 500;
+            color: #111;
+            font-weight: 400;
+            letter-spacing: -0.01em;
         }
 
         /* --- ГЛАВНАЯ --- */
@@ -332,7 +362,14 @@
                 <div class="key" onclick="pressPin(1)">1</div><div class="key" onclick="pressPin(2)">2</div><div class="key" onclick="pressPin(3)">3</div>
                 <div class="key" onclick="pressPin(4)">4</div><div class="key" onclick="pressPin(5)">5</div><div class="key" onclick="pressPin(6)">6</div>
                 <div class="key" onclick="pressPin(7)">7</div><div class="key" onclick="pressPin(8)">8</div><div class="key" onclick="pressPin(9)">9</div>
-                <div class="key empty"></div><div class="key" onclick="pressPin(0)">0</div><div class="key back" onclick="backspacePin()">⌫</div>
+                <div class="key empty"></div>
+                <div class="key" onclick="pressPin(0)">0</div>
+                <div class="key back" onclick="backspacePin()" aria-label="Видалити">
+                    <svg viewBox="0 0 30 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11 2.2h15.2A2.6 2.6 0 0 1 28.8 4.8v12.4a2.6 2.6 0 0 1-2.6 2.6H11L2.4 11 11 2.2Z" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>
+                        <path d="M16.2 7.6l6.2 6.2M22.4 7.6l-6.2 6.2" stroke="#111" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
             </div>
             <div class="pin-footer">Не пам'ятаю код для входу</div>
         </div>
