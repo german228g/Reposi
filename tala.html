@@ -263,45 +263,80 @@
             letter-spacing: -0.03em;
         }
         .news-card {
-            background: rgba(255,255,255,0.92);
+            background: #fff;
             border-radius: 24px;
-            padding: 18px 16px 14px;
-            margin-bottom: 8px;
+            padding: 20px 18px 18px;
+            margin-bottom: 10px;
+            box-shadow: 0 8px 24px rgba(31, 56, 78, 0.08);
         }
         .news-brands {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 10px;
         }
         .news-brand-diia {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
             letter-spacing: -0.03em;
             color: #111;
+            line-height: 1;
         }
-        .news-brand-emoji { font-size: 22px; line-height: 1; }
+        .news-brand-emoji {
+            font-size: 22px;
+            line-height: 1;
+            margin: 0 2px;
+        }
         .news-brand-hata {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            font-size: 15px;
+            gap: 7px;
+            font-size: 22px;
             font-weight: 700;
+            letter-spacing: -0.03em;
             color: #111;
+            line-height: 1;
         }
         .news-brand-hata .hata-mark {
-            width: 22px; height: 22px;
-            border-radius: 6px;
-            background: #1a1a1a;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: #111;
             color: #fff;
-            display: grid; place-items: center;
-            font-size: 12px;
-            font-weight: 700;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
         }
-        .news-date { font-size: 13px; color: #8e8e93; margin-bottom: 8px; }
-        .news-body { font-size: 17px; font-weight: 700; color: #111; line-height: 1.25; letter-spacing: -0.02em; }
-        .news-dots { display: flex; justify-content: center; gap: 6px; margin: 14px 0 4px; }
-        .news-dots span { width: 6px; height: 6px; border-radius: 50%; background: #c7c7cc; }
+        .news-brand-hata .hata-mark svg {
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+        .news-date {
+            font-size: 14px;
+            font-weight: 400;
+            color: #8e8e93;
+            margin-bottom: 10px;
+        }
+        .news-body {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111;
+            line-height: 1.22;
+            letter-spacing: -0.03em;
+        }
+        .news-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin: 14px 0 2px;
+        }
+        .news-dots span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #d8d0d2;
+        }
         .news-dots span.active { background: #111; }
 
         .services-card {
@@ -487,64 +522,55 @@
 
         /* --- ВІЙСЬКОВІ ОБЛІГАЦІЇ --- */
         #screen-bonds {
-            background: #eef3f8;
+            background: #f2f6fa;
         }
         #screen-bonds .bonds-panel {
             flex: 1;
             min-height: 0;
-            overflow-y: auto;
-            padding: 8px 16px 24px;
-            scrollbar-width: none;
+            padding: 8px 20px 24px;
         }
         .subpage-header {
             flex-shrink: 0;
-            display: flex;
+            display: grid;
+            grid-template-columns: 44px 1fr 44px;
             align-items: center;
-            justify-content: space-between;
-            padding: 14px 10px 8px;
-            background: #eef3f8;
+            padding: 12px 12px 4px;
+            background: #f2f6fa;
         }
         .subpage-header .hdr-btn {
-            width: 40px; height: 40px;
+            width: 40px;
+            height: 40px;
             border: 0;
             background: transparent;
             color: #111;
-            font-size: 22px;
-            display: grid; place-items: center;
+            font-size: 24px;
+            display: grid;
+            place-items: center;
             cursor: pointer;
             border-radius: 50%;
+            line-height: 1;
+        }
+        .subpage-header .hdr-btn.menu {
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
         }
         .subpage-header .hdr-title {
+            text-align: center;
             font-size: 17px;
             font-weight: 700;
             color: #111;
             letter-spacing: -0.02em;
         }
         .bonds-hello {
-            font-size: 28px;
+            font-size: 30px;
             font-weight: 700;
             color: #111;
             letter-spacing: -0.03em;
-            margin: 18px 4px 22px;
-        }
-        .bonds-card {
-            position: relative;
-            border-radius: 22px;
-            padding: 18px 16px;
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
-            border: 1.5px solid transparent;
-            background:
-                linear-gradient(#fff, #fff) padding-box,
-                linear-gradient(135deg, #d7b4ef 0%, #9ec7f5 45%, #b9e0f2 100%) border-box;
-        }
-        .bonds-card .emoji { font-size: 28px; line-height: 1; margin-top: 2px; }
-        .bonds-card .text {
-            font-size: 15px;
-            font-weight: 500;
-            color: #111;
-            line-height: 1.35;
+            margin: 22px 0 0;
+            line-height: 1.15;
         }
 
         /* --- НИЖНЯЯ НАВИГАЦИЯ --- */
@@ -633,12 +659,20 @@
                         <div class="news-brands">
                             <span class="news-brand-diia">Дія</span>
                             <span class="news-brand-emoji">🤝</span>
-                            <span class="news-brand-hata"><span class="hata-mark">⌂</span>HataHub</span>
+                            <span class="news-brand-hata">
+                                <span class="hata-mark" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 11.5L12 5l8 6.5"/>
+                                        <path d="M7 10.5V19h10v-8.5"/>
+                                    </svg>
+                                </span>
+                                HataHub
+                            </span>
                         </div>
                         <div class="news-date">07 серпня, 14:00</div>
                         <div class="news-body">HataHub цифровізувала оренду нерухомості</div>
                     </div>
-                    <div class="news-dots"><span class="active"></span><span></span><span></span><span></span></div>
+                    <div class="news-dots"><span class="active"></span><span></span><span></span></div>
 
                     <div class="section-title">Популярні послуги</div>
                     <div class="services-card">
@@ -758,14 +792,10 @@
             <div class="subpage-header">
                 <button type="button" class="hdr-btn" onclick="switchScreen('screen-home')" aria-label="Назад">←</button>
                 <div class="hdr-title">Військові облігації</div>
-                <button type="button" class="hdr-btn" aria-label="Меню">⋯</button>
+                <button type="button" class="hdr-btn menu" aria-label="Меню">⋯</button>
             </div>
             <div class="bonds-panel">
                 <div class="bonds-hello">Вітаємо, <span data-user="firstName">Герман</span> 👋</div>
-                <div class="bonds-card">
-                    <div class="emoji" aria-hidden="true">😔</div>
-                    <div class="text">Неможливо придбати військові облігації. Вам ще не виповнилося 18 років.</div>
-                </div>
             </div>
         </div>
 
