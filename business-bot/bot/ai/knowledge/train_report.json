@@ -1,0 +1,286 @@
+{
+  "meta": {
+    "trained_at": "2026-08-05T22:59:53.984360+00:00",
+    "accuracy": 0.9262,
+    "sanity_accuracy": 1.0,
+    "train_size": 6720,
+    "test_size": 1680,
+    "classes": 22,
+    "vocab_size": 9375
+  },
+  "metrics": {
+    "accuracy": 0.9262,
+    "samples": 1680,
+    "per_class": {
+      "auto": 0.988,
+      "beauty": 0.922,
+      "cleaning": 1.0,
+      "clothing": 0.938,
+      "content": 0.863,
+      "digital": 0.864,
+      "edu": 0.914,
+      "events": 0.973,
+      "finance": 0.95,
+      "fitness": 0.93,
+      "flowers": 0.987,
+      "food": 0.915,
+      "gaming": 0.933,
+      "handmade": 0.967,
+      "pets": 0.939,
+      "photo": 0.962,
+      "repair": 0.935,
+      "services": 0.812,
+      "shop": 0.822,
+      "smm": 0.932,
+      "travel": 0.93
+    }
+  },
+  "sanity": [
+    {
+      "text": "Продавать цветы в Украине",
+      "expected": "flowers",
+      "predicted": "flowers",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу букеты для 14-22 киев",
+      "expected": "flowers",
+      "predicted": "flowers",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "доставка цветов по Одессе",
+      "expected": "flowers",
+      "predicted": "flowers",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу открыть кофейню",
+      "expected": "food",
+      "predicted": "food",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "торты на заказ для дней рождения",
+      "expected": "food",
+      "predicted": "food",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "делаю маникюр на дому",
+      "expected": "beauty",
+      "predicted": "beauty",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "наращивание ресниц в Харькове",
+      "expected": "beauty",
+      "predicted": "beauty",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "репетитор по математике онлайн",
+      "expected": "edu",
+      "predicted": "edu",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу курсы английского для школьников",
+      "expected": "edu",
+      "predicted": "edu",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "делаю телеграм ботов для бизнеса",
+      "expected": "digital",
+      "predicted": "digital",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "делаю ботов для бизнеса онлайн",
+      "expected": "digital",
+      "predicted": "digital",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "разработка сайтов и лендингов",
+      "expected": "digital",
+      "predicted": "digital",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу продавать букеты в киеве",
+      "expected": "flowers",
+      "predicted": "flowers",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу шить одежду на заказ",
+      "expected": "clothing",
+      "predicted": "clothing",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "делаю сайты для малого бизнеса",
+      "expected": "digital",
+      "predicted": "digital",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "продаю кофе с собой",
+      "expected": "food",
+      "predicted": "food",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу учить детей рисованию",
+      "expected": "edu",
+      "predicted": "edu",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "сдаю квартиры туристам",
+      "expected": "travel",
+      "predicted": "travel",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "продаю зоотовары для кошек",
+      "expected": "pets",
+      "predicted": "pets",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу продавать чехлы для телефонов",
+      "expected": "shop",
+      "predicted": "shop",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "бренд одежды худи и футболки",
+      "expected": "clothing",
+      "predicted": "clothing",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "вяжу игрушки своими руками",
+      "expected": "handmade",
+      "predicted": "handmade",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "свечи ручной работы на подарок",
+      "expected": "handmade",
+      "predicted": "handmade",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "настраиваю рекламу и веду соцсети",
+      "expected": "smm",
+      "predicted": "smm",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "онлайн тренировки для похудения",
+      "expected": "fitness",
+      "predicted": "fitness",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "хочу канал с мемами и обзорами",
+      "expected": "content",
+      "predicted": "content",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "свадебный фотограф в Киеве",
+      "expected": "photo",
+      "predicted": "photo",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "ремонт телефонов и замена экрана",
+      "expected": "repair",
+      "predicted": "repair",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "автомойка и детейлинг",
+      "expected": "auto",
+      "predicted": "auto",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "выгул собак и груминг",
+      "expected": "pets",
+      "predicted": "pets",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "оформление шарами на день рождения",
+      "expected": "events",
+      "predicted": "events",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "организую туры в горы",
+      "expected": "travel",
+      "predicted": "travel",
+      "confidence": 0.901,
+      "ok": true
+    },
+    {
+      "text": "клининг квартир после ремонта",
+      "expected": "cleaning",
+      "predicted": "cleaning",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "прокачка аккаунтов в играх",
+      "expected": "gaming",
+      "predicted": "gaming",
+      "confidence": 1.0,
+      "ok": true
+    },
+    {
+      "text": "бухгалтерия для фоп",
+      "expected": "finance",
+      "predicted": "finance",
+      "confidence": 1.0,
+      "ok": true
+    }
+  ],
+  "examples_count": 15
+}
