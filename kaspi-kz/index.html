@@ -1,4 +1,4 @@
-нет<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -11,11 +11,10 @@
   <meta name="apple-mobile-web-app-title" content="Kaspi.kz">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Kaspi.kz</title>
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="./manifest.webmanifest?v=20260810">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png?v=20260810">
   <style>
     :root{--red:#ee3d2b;--red-dark:#d92f20;--blue:#1c6de0;--bg:#f2f5f8;--white:#fff;--ink:#191b20;--muted:#8e949d;--line:#e8ebef;--shadow:0 8px 20px rgba(0,0,0,.04);--card:16px;--banner:20px}
     *{box-sizing:border-box;margin:0;padding:0}[hidden]{display:none!important}html{background:#e9edf1}body{min-height:100vh;background:#e9edf1;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}button,input{font:inherit}button{color:inherit;cursor:pointer}svg{display:block}.icon{width:24px;height:24px;fill:none;stroke:var(--red);stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
@@ -56,10 +55,10 @@
 .id-back:after{background:linear-gradient(115deg,rgba(255,255,255,.10),transparent 44%,rgba(255,255,255,.04))}
 .id-front,.id-back{background:#a9e1e5}
 .id-header-tri,.id-front-body,.id-iin-row,.id-back-top,.id-back-body,.machine-block,.official-fields,.id-back-left{position:relative;z-index:1}
-.id-header-tri{display:grid;grid-template-columns:1fr 46px 1fr;gap:3px;align-items:center;padding:2px 0 4px}
+.id-header-tri{display:grid;grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);gap:3px;align-items:center;padding:2px 0 4px}
 .id-head-side b,.id-head-side strong{display:block;color:#132b2d;font-family:"Times New Roman",Times,Georgia,serif;letter-spacing:0;text-transform:uppercase;white-space:nowrap}
-.id-head-side b{font-size:9px;font-weight:700;line-height:1.15}
-.id-head-side strong{margin-top:1px;font-size:9px;font-weight:700;line-height:1.15}
+.id-head-side b{font-size:clamp(7.2px,2vw,9px);font-weight:700;line-height:1.15}
+.id-head-side strong{margin-top:1px;font-size:clamp(7.2px,2vw,9px);font-weight:700;line-height:1.15}
 .id-head-side.left{text-align:right}.id-head-side.right{text-align:left}
 .emblem{width:46px;height:46px;display:grid;place-items:center;justify-self:center}
 .emblem-svg{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(80,60,10,.16))}
@@ -84,20 +83,19 @@
 .kz-map{width:60px;height:auto;display:block;transform:translateY(6px) scaleX(.88) scaleY(1.18);transform-origin:left top}
 .chip{width:46px;height:42px;display:block;margin-top:0;margin-left:34px;transform:translateY(18px)}
 .machine-block{position:relative;z-index:2;margin-top:12px;padding:12px 0 4px;border-top:0;background:transparent;box-shadow:none;display:grid;gap:2px}.machine-block:before{content:"";position:absolute;left:-12px;right:-12px;top:0;bottom:-12px;z-index:0;pointer-events:none;border-radius:0 0 14px 14px;background:linear-gradient(180deg,rgba(191,231,231,0) 0,#c9eeee 16px,#c9eeee 100%)}.machine-line{position:relative;z-index:1;transform:translateY(7px);text-align:center}
-.machine-line{color:#10272b;font:13px/1.36 "Courier New",Courier,ui-monospace,Menlo,monospace;font-weight:700;letter-spacing:0;white-space:nowrap;overflow:hidden;min-height:1.3em}
+.machine-line{color:#10272b;font:clamp(10.5px,3.02vw,13px)/1.36 "Courier New",Courier,ui-monospace,Menlo,monospace;font-weight:700;letter-spacing:0;white-space:nowrap;overflow:hidden;min-height:1.3em}
 .document-actions{display:grid;gap:9px;margin-top:15px}
 .present-document,.send-document{width:100%;padding:14px;border:0;border-radius:14px;font-size:11px;font-weight:850}
 .present-document{background:var(--blue);color:#fff;box-shadow:0 8px 18px rgba(28,109,224,.18)}
 .send-document{background:#e9edf1;color:#555e68}
 @media(max-width:360px){
-  .id-header-tri{grid-template-columns:1fr 40px 1fr;gap:4px}
+  .id-header-tri{grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:4px}
   .emblem{width:40px;height:40px}.emblem-svg{width:40px;height:40px}
-  .id-head-side b,.id-head-side strong{font-size:8.5px}
   .id-front-body{grid-template-columns:88px 1fr;gap:10px}
   .portrait{height:116px}
   .official-field b,.id-iin-row b{font-size:12px}
   .id-back-body{grid-template-columns:64px 1fr}
-  .machine-line{font-size:10.5px;letter-spacing:1px}
+  .machine-line{font-size:10.5px}
 }
 .requisites-panel{padding:16px;border-radius:17px;background:#fff;box-shadow:var(--shadow)}.requisite{display:flex;justify-content:space-between;gap:15px;padding:13px 0;border-bottom:1px solid var(--line)}.requisite:first-child{padding-top:0}.requisite:last-child{padding-bottom:0;border-bottom:0}.requisite span{color:var(--muted);font-size:9px}.requisite b{text-align:right;font-size:10px}.fiction-note{margin-top:12px;color:#77808a;text-align:center;font-size:8px;line-height:1.4}
     @media(max-width:360px){.service-row{grid-template-columns:42px 1fr 16px}.list-icon{width:42px;height:42px}}
