@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+:root {
+  --color-ink: #0a0a0a;
+  --color-bone: #f3f1ec;
+  --color-paper: #ffffff;
+  --color-line: rgba(10, 10, 10, 0.12);
+  --color-line-soft: rgba(10, 10, 10, 0.08);
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-bone: var(--color-bone);
+  --color-paper: var(--color-paper);
+  --color-line: var(--color-line);
+  --font-display: var(--font-inter-tight);
+  --font-sans: var(--font-inter-tight);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--color-bone);
+  color: var(--color-ink);
+  font-family: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-bone);
+}
+
+/* Editorial helpers */
+.text-balance {
+  text-wrap: balance;
+}
+
+.hairline {
+  height: 1px;
+  background: var(--color-line);
+}
+
+.hairline-v {
+  width: 1px;
+  background: var(--color-line);
+}
+
+.container-edit {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 5vw, 4rem);
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Custom scrollbar for a refined feel */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bone);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(10, 10, 10, 0.25);
+  border-radius: 999px;
+}
+
+/* Marquee for testimonials */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee-scroll 42s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+/* Lightweight, CSS-only hero entrance (avoids blocking the LCP paint on
+   JS-driven animation libraries competing with hydration / WebGL init). */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-rise {
+  animation: hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise {
+    animation: none;
+  }
+}
+
+@keyframes hero-lite-spin {
+  from {
+    transform: rotate3d(0.3, 1, 0, 0deg);
+  }
+  to {
+    transform: rotate3d(0.3, 1, 0, 360deg);
+  }
+}
+
+.hero-lite-spin {
+  animation: hero-lite-spin 14s linear infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-lite-spin {
+    animation: none;
+  }
+}
+
