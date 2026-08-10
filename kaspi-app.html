@@ -256,28 +256,12 @@
     </div>
   </section>
 
-  <section class="screen" id="profileScreen"><header class="profile-head"><button class="back" data-back aria-label="Назад"><svg class="icon"><use href="#i-back"/></svg></button><h1>Профиль</h1></header><div class="content"><div class="profile-card"><span class="avatar" data-avatar></span><div><h2 data-name></h2><p data-city></p></div><button class="edit" id="editProfile">Изменить</button></div><form class="editor" id="editor"><label class="field"><span>Имя и фамилия</span><input id="nameInput" maxlength="70" autocomplete="name" required></label><label class="field"><span>Город</span><input id="cityInput" maxlength="40" autocomplete="address-level2"></label><div class="photo-actions"><label class="pick">Выбрать фото<input id="photoInput" type="file" accept="image/*"></label><button class="secondary" id="removePhoto" type="button">Удалить фото</button></div><div class="form-actions"><button class="secondary" id="cancelEdit" type="button">Отмена</button><button class="save" type="submit">Сохранить</button></div></form><div class="stats"><article class="stat"><small>Расходы за месяц</small><strong>184 900 ₸</strong><em>+8,4% за месяц</em></article><article class="stat"><small>Кэшбэк</small><strong>4 280 ₸</strong><em>Начислено 620 ₸</em></article><article class="stat"><small>Операции</small><strong>47</strong><em>Без комиссий</em></article></div><h2 class="section-title">Цифровое удостоверение</h2><article class="identity"><div class="id-top"><span class="id-avatar" data-avatar></span><div><small>РЕСПУБЛИКА КАЗАХСТАН</small><h3 data-name></h3></div><span class="verified">Верифицирован</span></div><div class="id-fields"><div class="id-field full"><label>ФИО</label><span data-name></span></div><div class="id-field"><label>ИИН</label><span data-doc="iin"></span></div><div class="id-field"><label>Дата рождения</label><span data-doc="birthDate"></span></div><div class="id-field full"><label>Номер документа</label><span data-doc="docNumber"></span></div></div></article><button class="share" id="shareDetails"><svg class="icon"><use href="#i-share"/></svg>Отправить реквизиты</button></div></section>
+  <section class="screen" id="profileScreen"><header class="profile-head"><button class="back" data-back aria-label="Назад"><svg class="icon"><use href="#i-back"/></svg></button><h1>Профиль</h1></header><div class="content"><div class="profile-card"><span class="avatar" data-avatar></span><div><h2 data-name></h2><p data-city></p></div></div><form class="editor" id="editor"><label class="field"><span>Имя и фамилия</span><input id="nameInput" maxlength="70" autocomplete="name" required></label><label class="field"><span>Город</span><input id="cityInput" maxlength="40" autocomplete="address-level2"></label><div class="photo-actions"><label class="pick">Выбрать фото<input id="photoInput" type="file" accept="image/*"></label><button class="secondary" id="removePhoto" type="button">Удалить фото</button></div><div class="form-actions"><button class="secondary" id="cancelEdit" type="button">Отмена</button><button class="save" type="submit">Сохранить</button></div></form><div class="stats"><article class="stat"><small>Расходы за месяц</small><strong>184 900 ₸</strong><em>+8,4% за месяц</em></article><article class="stat"><small>Кэшбэк</small><strong>4 280 ₸</strong><em>Начислено 620 ₸</em></article><article class="stat"><small>Операции</small><strong>47</strong><em>Без комиссий</em></article></div><h2 class="section-title">Цифровое удостоверение</h2><article class="identity"><div class="id-top"><span class="id-avatar" data-avatar></span><div><small>РЕСПУБЛИКА КАЗАХСТАН</small><h3 data-name></h3></div><span class="verified">Верифицирован</span></div><div class="id-fields"><div class="id-field full"><label>ФИО</label><span data-name></span></div><div class="id-field"><label>ИИН</label><span data-doc="iin"></span></div><div class="id-field"><label>Дата рождения</label><span data-doc="birthDate"></span></div><div class="id-field full"><label>Номер документа</label><span data-doc="docNumber"></span></div></div></article><button class="share" id="shareDetails"><svg class="icon"><use href="#i-share"/></svg>Отправить реквизиты</button></div></section>
 
   <nav class="bottom" aria-label="Основная навигация"><button class="tab" data-route="home"><svg class="icon"><use href="#i-home"/></svg><span>Главная</span></button><button class="tab" data-route="qr"><svg class="icon"><use href="#i-scan"/></svg><span>Kaspi QR</span></button><button class="tab" data-route="messages"><span class="badge">1</span><svg class="icon"><use href="#i-chat"/></svg><span>Сообщения</span></button><button class="tab" data-route="services"><svg class="icon"><use href="#i-menu"/></svg><span>Сервисы</span></button></nav>
 </main>
 <div class="viewer-modal" id="documentViewer" hidden><header class="viewer-head"><strong>Просмотр документа</strong><div class="viewer-controls"><button id="toggleDocumentZoom" type="button" aria-label="Увеличить документ">＋</button><button id="closeDocumentViewer" type="button" aria-label="Закрыть просмотр">×</button></div></header><div class="viewer-stage" id="documentViewerStage"><div class="viewer-document" id="documentViewerCard"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-<div class="access-gate" id="codeGate">
-  <form class="access-card" id="accessCodeForm">
-    <div class="access-logo"><svg class="icon"><use href="#i-scan"/></svg></div>
-    <h1>Вход по коду</h1>
-    <p>Введите персональный код доступа, полученный после оформления подписки.</p>
-    <label class="code-field"><span>Код доступа</span><input id="accessCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="40" placeholder="KP-XXXX-XXXX-XXXX-XXXX" required></label>
-    <button class="access-submit" type="submit">Войти</button>
-    <p class="access-error" id="accessError" role="alert"></p>
-  </form>
-</div>
-
-<div class="session-tools" id="sessionTools" hidden>
-  <button class="session-btn" id="localAdminButton" type="button" hidden>Управление</button>
-  <button class="session-btn" id="localLogoutButton" type="button">Выйти</button>
-</div>
 
 <div class="admin-modal" id="localAdminModal" hidden>
   <section class="admin-card" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
@@ -304,7 +288,7 @@
   const IDENTITY_STORE = 'kaspiIdentityDataV3';
   const defaults = {name:'Ахметов Данияр',city:'Алматы',avatar:''};
   const identityDefaults = {surname:'Ахметов',firstName:'Данияр',patronymic:'Серикович',iin:'951107450921',birthDate:'07.11.1995',birthPlace:'Алматы',nationality:'қазақ',docNumber:'047512398',issueDate:'18.02.2024',expiryDate:'17.02.2034',issuer:'ҚР ІШКІ ІСТЕР МИНИСТРЛІГІ',photo:''};
-  const routes = {home:'homeScreen',qr:'qrScreen',messages:'messagesScreen',services:'servicesScreen',gov:'govScreen',documents:'documentsScreen',idupload:'idUploadScreen',idpreview:'idPreviewScreen',profile:'profileScreen'};
+  const routes = {home:'homeScreen',qr:'qrScreen',messages:'profileScreen',services:'servicesScreen',gov:'govScreen',documents:'documentsScreen',idupload:'idUploadScreen',idpreview:'idPreviewScreen',profile:'profileScreen'};
   const tabFor = {home:'home',qr:'qr',messages:'messages',services:'services',gov:'services',documents:'services',idupload:'services',idpreview:'services',profile:null};
   let previousRoute = 'home';
   let profile = load();
@@ -333,7 +317,7 @@
   function toast(message){const el=document.getElementById('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200)}
   function route(){const name=location.hash.slice(1);return routes[name]?name:'home'}
   function renderRoute(){const active=route();document.querySelectorAll('.screen').forEach(el=>el.classList.toggle('active',el.id===routes[active]));document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.route===tabFor[active]));window.scrollTo(0,0)}
-  function navigate(next){if(!routes[next])next='home';const now=route();if(next==='profile')previousRoute=now==='profile'?'home':now;if(location.hash==='#'+next)renderRoute();else location.hash=next}
+  function navigate(next){if(!routes[next])next='home';const now=route();if(next==='profile'||next==='messages')previousRoute=(now==='profile'||now==='messages')?'home':now;if(location.hash==='#'+next)renderRoute();else location.hash=next}
 
   document.addEventListener('click',event=>{
     const back=event.target.closest('[data-back]');if(back){navigate(previousRoute);return}
@@ -373,7 +357,6 @@
   document.getElementById('identityTabs').addEventListener('click',event=>{const btn=event.target.closest('[data-id-tab]');if(btn)setIdentityTab(btn.dataset.idTab)});
 
   const editor=document.getElementById('editor');
-  document.getElementById('editProfile').addEventListener('click',()=>{document.getElementById('nameInput').value=profile.name;document.getElementById('cityInput').value=profile.city;editor.classList.add('open');document.getElementById('nameInput').focus()});
   document.getElementById('cancelEdit').addEventListener('click',()=>editor.classList.remove('open'));
   editor.addEventListener('submit',event=>{event.preventDefault();const name=document.getElementById('nameInput').value.trim();if(!name){toast('Введите имя');return}profile.name=name;profile.city=document.getElementById('cityInput').value.trim()||defaults.city;const nameParts=name.split(/\s+/);identity.surname=nameParts[0]||identity.surname;if(nameParts.length>1){identity.firstName=nameParts[1];identity.patronymic=nameParts.slice(2).join(' ')}else if(nameParts.length===1){/* keep names */}if(save()&&saveIdentity()){renderProfile();renderIdentity();editor.classList.remove('open');toast('Профиль обновлён')}});
 
@@ -406,97 +389,6 @@
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!documentViewer.hidden)closeDocumentViewer()});
 
   renderProfile();renderIdentity();if(!location.hash)history.replaceState(null,'','#home');renderRoute();
-})();
-</script>
-<script>
-(() => {
-  'use strict';
-  const OWNER_CODE='OWNER-D0DC-0816-6C7F-4DA8-F613';
-  const CODES_STORE='superAppLocalCodesV1';
-  const SESSION_STORE='superAppLocalSessionV1';
-  const gate=document.getElementById('codeGate');
-  const form=document.getElementById('accessCodeForm');
-  const input=document.getElementById('accessCodeInput');
-  const error=document.getElementById('accessError');
-  const tools=document.getElementById('sessionTools');
-  const adminButton=document.getElementById('localAdminButton');
-  const modal=document.getElementById('localAdminModal');
-  const list=document.getElementById('codeList');
-  let session=read(SESSION_STORE,null);
-  let codes=read(CODES_STORE,[]);
-
-  function read(key,fallback){try{const value=JSON.parse(localStorage.getItem(key));return value??fallback}catch(_){return fallback}}
-  function write(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch(_){return false}}
-  function normalize(value){return String(value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'')}
-  function formatDate(value){if(!value)return '—';return new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(value))}
-  function currentCode(){return session?.role==='client'?codes.find(item=>item.id===session.codeId):null}
-  function sessionValid(){if(session?.role==='owner')return true;const item=currentCode();return Boolean(item&&item.active&&(!item.expiresAt||item.expiresAt>Date.now()))}
-  function refreshAccess(){
-    if(!sessionValid()){session=null;localStorage.removeItem(SESSION_STORE)}
-    const signedIn=Boolean(session);
-    gate.hidden=signedIn;tools.hidden=!signedIn;adminButton.hidden=session?.role!=='owner';
-    document.body.style.overflow=signedIn?'':'hidden';
-    if(!signedIn)setTimeout(()=>input.focus(),80);
-  }
-  function saveCodes(){write(CODES_STORE,codes)}
-  function makeCode(){
-    const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
-    const raw=Array.from(bytes,value=>alphabet[value%alphabet.length]).join('');
-    return 'KP-'+raw.match(/.{4}/g).join('-');
-  }
-  function showError(message){error.textContent=message;input.focus();input.select()}
-  function escapeHtml(value){const node=document.createElement('span');node.textContent=String(value);return node.innerHTML}
-  function copy(value){
-    if(navigator.clipboard?.writeText)return navigator.clipboard.writeText(value);
-    const area=document.createElement('textarea');area.value=value;area.style.position='fixed';area.style.opacity='0';document.body.append(area);area.select();document.execCommand('copy');area.remove();return Promise.resolve();
-  }
-
-  form.addEventListener('submit',event=>{
-    event.preventDefault();error.textContent='';const entered=normalize(input.value);
-    if(entered===normalize(OWNER_CODE)){session={role:'owner',name:'Владелец',signedAt:Date.now()};write(SESSION_STORE,session);input.value='';refreshAccess();return}
-    const item=codes.find(code=>normalize(code.code)===entered);
-    if(!item){showError('Код не найден');return}
-    if(!item.active){showError('Этот код отключён');return}
-    if(item.expiresAt&&item.expiresAt<=Date.now()){showError('Срок действия кода закончился');return}
-    if(!item.activatedAt){item.activatedAt=Date.now();item.expiresAt=Date.now()+item.days*86400000;saveCodes()}
-    session={role:'client',codeId:item.id,name:item.label,signedAt:Date.now()};write(SESSION_STORE,session);input.value='';refreshAccess();
-  });
-
-  document.getElementById('localLogoutButton').addEventListener('click',()=>{session=null;localStorage.removeItem(SESSION_STORE);modal.hidden=true;refreshAccess()});
-  adminButton.addEventListener('click',()=>{renderCodes();modal.hidden=false});
-  document.getElementById('adminClose').addEventListener('click',()=>modal.hidden=true);
-  modal.addEventListener('click',event=>{if(event.target===modal)modal.hidden=true});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.hidden)modal.hidden=true});
-
-  document.getElementById('createCodeForm').addEventListener('submit',event=>{
-    event.preventDefault();
-    const label=document.getElementById('clientLabel').value.trim();
-    const plan=document.getElementById('clientPlan').value.trim();
-    const days=Math.max(1,Math.min(3650,Number(document.getElementById('clientDays').value)||30));
-    let code;do{code=makeCode()}while(codes.some(item=>item.code===code));
-    const item={id:crypto.randomUUID?.()||String(Date.now())+Math.random(),code,label,plan,days,active:true,createdAt:Date.now(),activatedAt:null,expiresAt:null};
-    codes.unshift(item);saveCodes();
-    document.getElementById('newCodeValue').textContent=code;document.getElementById('newCodeBox').hidden=false;
-    document.getElementById('clientLabel').value='';renderCodes();
-  });
-  document.getElementById('copyNewCode').addEventListener('click',event=>{copy(document.getElementById('newCodeValue').textContent).then(()=>{event.currentTarget.textContent='Скопировано';setTimeout(()=>event.currentTarget.textContent='Скопировать',1300)})});
-
-  function renderCodes(){
-    if(!codes.length){list.innerHTML='<div class="empty-codes">Кодов пока нет</div>';return}
-    list.innerHTML=codes.map(item=>{
-      const expired=item.expiresAt&&item.expiresAt<=Date.now();
-      const status=!item.active||expired?'Отключён':item.activatedAt?'Активен':'Не использован';
-      const statusClass=!item.active||expired?'off':item.activatedAt?'':'wait';
-      return '<article class="code-item '+(!item.active||expired?'off':'')+'"><div class="code-row"><div><b>'+escapeHtml(item.label)+'</b><code>'+escapeHtml(item.code)+'</code></div><span class="code-status '+statusClass+'">'+status+'</span></div><p class="code-meta">'+escapeHtml(item.plan)+' · '+item.days+' дн.<br>Создан: '+formatDate(item.createdAt)+' · До: '+(item.expiresAt?formatDate(item.expiresAt):'после первого входа')+'</p><div class="code-actions"><button data-copy="'+escapeHtml(item.id)+'">Копировать</button><button data-toggle="'+escapeHtml(item.id)+'">'+(item.active?'Отключить':'Включить')+'</button><button class="danger" data-delete="'+escapeHtml(item.id)+'">Удалить</button></div></article>';
-    }).join('');
-  }
-  list.addEventListener('click',event=>{
-    const copyButton=event.target.closest('[data-copy]');if(copyButton){const item=codes.find(code=>code.id===copyButton.dataset.copy);if(item)copy(item.code).then(()=>{copyButton.textContent='Скопировано';setTimeout(()=>copyButton.textContent='Копировать',1200)});return}
-    const toggle=event.target.closest('[data-toggle]');if(toggle){const item=codes.find(code=>code.id===toggle.dataset.toggle);if(item){item.active=!item.active;saveCodes();renderCodes()}return}
-    const remove=event.target.closest('[data-delete]');if(remove){codes=codes.filter(code=>code.id!==remove.dataset.delete);saveCodes();renderCodes()}
-  });
-
-  refreshAccess();
 })();
 </script>
 </body>
